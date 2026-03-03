@@ -233,6 +233,37 @@ function lockCurrentBlock() {
 
   // 完成判定 → 消去 → 落下 → 連鎖チェック
   processCompletions();
+
+  // 死にブロック判定
+  markDeadBlocks();
+}
+
+// === 死にブロック判定 ===
+
+/** ブロックが壁接触で完全死かどうか判定
+ *  非ゼロの接続面が壁（盤面外）に面していれば完全死 */
+function isDeadBlock(row, col, block) {
+  for (const [dr, dc, si] of DIRECTIONS) {
+    if (block.sides[si] === 0) continue; // 接続なしはスキップ
+    const nr = row + dr;
+    const nc = col + dc;
+    // 盤面外（壁）に面している → 完全死
+    if (nr < 0 || nr >= BOARD_ROWS || nc < 0 || nc >= BOARD_COLS) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** 盤面全体の死にブロックを判定・マーク */
+function markDeadBlocks() {
+  for (let r = 0; r < BOARD_ROWS; r++) {
+    for (let c = 0; c < BOARD_COLS; c++) {
+      const block = game.board[r][c];
+      if (!block) continue;
+      block.dead = isDeadBlock(r, c, block);
+    }
+  }
 }
 
 // === 完成判定 ===
@@ -446,12 +477,12 @@ function drawBlockAt(block, x, y, w, h, padding) {
   const bw = w - padding * 2;
   const bh = h - padding * 2;
 
-  // ブロック本体
-  ctx.fillStyle = TYPE_COLORS[block.type] || "#ccc";
+  // ブロック本体（死にブロックは灰色）
+  ctx.fillStyle = block.dead ? "#b0b0b0" : (TYPE_COLORS[block.type] || "#ccc");
   ctx.fillRect(bx, by, bw, bh);
 
-  // 接続面マーカー
-  ctx.strokeStyle = "#333";
+  // 接続面マーカー（死にブロックは薄い色）
+  ctx.strokeStyle = block.dead ? "#888" : "#333";
   ctx.lineWidth = 2;
   const cx = x + w / 2;
   const cy = y + h / 2;
