@@ -1,0 +1,67 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #f5f0e8;
+  font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
+
+#game-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* PC: サイドパネル */
+.side-panel {
+  flex: 1;
+  display: none;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel-content {
+  text-align: center;
+  color: #444;
+}
+
+.panel-content h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.1em;
+}
+
+#score-display {
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+/* ゲームエリア: 9:16比率を維持 */
+#game-area {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game-canvas {
+  display: block;
+  background: #fff;
+  image-rendering: pixelated;
+}
+
+/* PC表示: サイドパネルを表示 */
+@media (min-aspect-ratio: 10/16) {
+  .side-panel {
+    display: flex;
+  }
+}
