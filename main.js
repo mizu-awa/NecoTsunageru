@@ -123,8 +123,7 @@ function generateBlock() {
     }
   }
 
-  const patternCategory = (chosenCategory === "head" || chosenCategory === "tail") ? "end" : chosenCategory;
-  const indices = BLOCK_CATEGORY_INDICES[patternCategory];
+  const indices = BLOCK_CATEGORY_INDICES[chosenCategory];
   const patternIndex = indices[Math.floor(Math.random() * indices.length)];
   let sides = [...BLOCK_PATTERNS[patternIndex]];
 
