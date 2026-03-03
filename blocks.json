@@ -1,0 +1,49 @@
+{
+  "edgeValues": {
+    "0": "接続なし",
+    "1": "上下足なし",
+    "2": "上足なし下足あり",
+    "3": "上足あり下足なし",
+    "4": "上下足あり"
+  },
+  "forbiddenPairs": [],
+  "spawnWeights": {
+    "head": 10,
+    "tail": 10,
+    "straight": 15,
+    "elbow": 25,
+    "tee": 15,
+    "cross": 5
+  },
+  "blocks": [
+    { "id": 0,  "sides": [0,0,0,3], "category": "head",     "image": "img/0003_head.png" },
+    { "id": 1,  "sides": [0,1,0,0], "category": "head",     "image": "img/0100_head.png" },
+    { "id": 2,  "sides": [0,2,0,0], "category": "head",     "image": "img/0200_head.png" },
+    { "id": 3,  "sides": [0,4,0,0], "category": "head",     "image": "img/0400_head.png" },
+    { "id": 4,  "sides": [0,0,0,3], "category": "tail",     "image": "img/0003_tail.png" },
+    { "id": 5,  "sides": [0,1,0,0], "category": "tail",     "image": "img/0100_tail.png" },
+    { "id": 6,  "sides": [0,2,0,0], "category": "tail",     "image": "img/0200_tail.png" },
+    { "id": 7,  "sides": [0,4,0,0], "category": "tail",     "image": "img/0400_tail.png" },
+    { "id": 8,  "sides": [0,1,0,1], "category": "straight", "image": "img/0101_straight.png" },
+    { "id": 9,  "sides": [0,2,0,3], "category": "straight", "image": "img/0203_straight.png" },
+    { "id": 10, "sides": [0,4,0,4], "category": "straight", "image": "img/0404_straight.png" },
+    { "id": 11, "sides": [1,0,0,1], "category": "elbow",    "image": "img/1001_elbow.png" },
+    { "id": 12, "sides": [2,0,0,3], "category": "elbow",    "image": "img/2003_elbow.png" },
+    { "id": 13, "sides": [3,0,0,2], "category": "elbow",    "image": "img/3002_elbow.png" },
+    { "id": 14, "sides": [4,0,0,4], "category": "elbow",    "image": "img/4004_elbow.png" },
+    { "id": 15, "sides": [1,1,0,1], "category": "tee",      "image": "img/1101_tee.png" },
+    { "id": 16, "sides": [1,2,0,3], "category": "tee",      "image": "img/1203_tee.png" },
+    { "id": 17, "sides": [2,3,0,1], "category": "tee",      "image": "img/2301_tee.png" },
+    { "id": 18, "sides": [2,4,0,3], "category": "tee",      "image": "img/2403_tee.png" },
+    { "id": 19, "sides": [3,1,0,2], "category": "tee",      "image": "img/3102_tee.png" },
+    { "id": 20, "sides": [3,2,0,4], "category": "tee",      "image": "img/3204_tee.png" },
+    { "id": 21, "sides": [4,3,0,2], "category": "tee",      "image": "img/4302_tee.png" },
+    { "id": 22, "sides": [4,4,0,4], "category": "tee",      "image": "img/4404_tee.png" },
+    { "id": 23, "sides": [1,1,1,1], "category": "cross",    "image": "img/1111_cross.png" },
+    { "id": 24, "sides": [3,1,1,2], "category": "cross",    "image": "img/3112_cross.png" },
+    { "id": 25, "sides": [3,2,3,2], "category": "cross",    "image": "img/3232_cross.png" },
+    { "id": 26, "sides": [4,3,1,2], "category": "cross",    "image": "img/4312_cross.png" },
+    { "id": 27, "sides": [4,4,3,2], "category": "cross",    "image": "img/4432_cross.png" },
+    { "id": 28, "sides": [4,4,4,4], "category": "cross",    "image": "img/4444_cross.png" }
+  ]
+}

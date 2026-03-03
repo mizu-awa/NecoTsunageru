@@ -12,7 +12,7 @@ const FALL_INTERVAL = 1.0;       // 通常落下間隔（秒）
 const FAST_FALL_INTERVAL = 0.05; // 高速落下間隔（秒）
 
 // === 禁止ペア（接続不可の辺の値の組み合わせ） ===
-const FORBIDDEN_PAIRS = new Set([
+let FORBIDDEN_PAIRS = new Set([
   // "3,4", "4,3", "1,1", "2,2", "1,3", "2,4", "4,1", "3,2" // きびしめモード
   // かんたんモードは、すべての非ゼロ接続を許可（互換・非互換の区別なし）
 ]);
@@ -61,38 +61,56 @@ function rotateSides(sides) {
   return [sides[3], sides[0], sides[1], sides[2]];
 }
 
-// === 45パターンのブロック定義 ===
-const BLOCK_PATTERNS = [
-  [0,0,0,0], [0,0,0,1], [0,0,0,2], [0,0,0,3], [0,0,0,4],
-  [0,0,1,2], [0,0,1,4], [0,0,2,1], [0,0,2,3], [0,0,3,1],
-  [0,0,3,3], [0,0,4,2], [0,0,4,4], [0,1,0,1], [0,1,0,2],
-  [0,1,0,3], [0,1,0,4], [0,1,2,1], [0,1,2,3], [0,1,4,2],
-  [0,1,4,4], [0,2,0,2], [0,2,0,3], [0,2,0,4], [0,2,1,2],
-  [0,2,1,4], [0,2,3,1], [0,2,3,3], [0,3,0,3], [0,3,0,4],
-  [0,3,1,2], [0,3,1,4], [0,3,3,1], [0,3,3,3], [0,4,0,4],
-  [0,4,2,1], [0,4,2,3], [0,4,4,2], [0,4,4,4], [1,2,1,2],
-  [1,2,3,3], [1,4,2,3], [1,4,4,2], [3,3,3,3], [4,4,4,4],
-];
+// === ブロック定義（blocks.json から読み込み） ===
+let BLOCK_DEFS = [];           // blocks.json の blocks 配列
+let BLOCK_PATTERNS = [];       // sides 配列のみ（互換用）
+let BLOCK_IMAGES = {};         // id → Image オブジェクト
+let BLOCK_CATEGORY_INDICES = {};
+let SPAWN_WEIGHTS = {};
+let SPAWN_WEIGHT_TOTAL = 0;
 
-const BLOCK_CATEGORY_INDICES = {
-  isolated: [0],
-  end:      [1, 2, 3, 4],
-  elbow:    [5, 6, 7, 8, 9, 10, 11, 12],
-  straight: [13, 14, 15, 16, 21, 22, 23, 28, 29, 34],
-  tee:      [17, 18, 19, 20, 24, 25, 26, 27, 30, 31, 32, 33, 35, 36, 37, 38],
-  cross:    [39, 40, 41, 42, 43, 44],
-};
+/** blocks.json を読み込んでブロック定義を初期化 */
+async function loadBlockDefs() {
+  const res = await fetch("blocks.json");
+  const data = await res.json();
 
-const SPAWN_WEIGHTS = {
-  head:     10,
-  tail:     10,
-  straight: 15,
-  elbow:    25,
-  tee:      15,
-  cross:     5,
-};
+  // 禁止ペア
+  if (data.forbiddenPairs && data.forbiddenPairs.length > 0) {
+    FORBIDDEN_PAIRS = new Set(data.forbiddenPairs.map(p => p.join(",")));
+  }
 
-const SPAWN_WEIGHT_TOTAL = Object.values(SPAWN_WEIGHTS).reduce((a, b) => a + b, 0);
+  // スポーン重み
+  SPAWN_WEIGHTS = data.spawnWeights;
+  SPAWN_WEIGHT_TOTAL = Object.values(SPAWN_WEIGHTS).reduce((a, b) => a + b, 0);
+
+  // ブロック定義
+  BLOCK_DEFS = data.blocks;
+  BLOCK_PATTERNS = BLOCK_DEFS.map(b => b.sides);
+
+  // カテゴリ別インデックスを自動構築
+  BLOCK_CATEGORY_INDICES = {};
+  BLOCK_DEFS.forEach((def, i) => {
+    const cat = def.category;
+    if (!BLOCK_CATEGORY_INDICES[cat]) BLOCK_CATEGORY_INDICES[cat] = [];
+    BLOCK_CATEGORY_INDICES[cat].push(i);
+  });
+
+  // 画像プリロード
+  const imagePromises = [];
+  for (const def of BLOCK_DEFS) {
+    if (def.image) {
+      const img = new Image();
+      const p = new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve; // 読み込み失敗でも止めない
+      });
+      img.src = def.image;
+      BLOCK_IMAGES[def.id] = img;
+      imagePromises.push(p);
+    }
+  }
+  await Promise.all(imagePromises);
+}
 
 function generateBlock() {
   let roll = Math.random() * SPAWN_WEIGHT_TOTAL;
@@ -119,6 +137,7 @@ function generateBlock() {
     type: chosenCategory,
     sides: sides,
     rotation: rotations,
+    defId: BLOCK_DEFS[patternIndex].id,
   };
 }
 
@@ -477,40 +496,53 @@ function drawBlockAt(block, x, y, w, h, padding) {
   const bw = w - padding * 2;
   const bh = h - padding * 2;
 
-  // ブロック本体（死にブロックは灰色）
-  ctx.fillStyle = block.dead ? "#b0b0b0" : (TYPE_COLORS[block.type] || "#ccc");
-  ctx.fillRect(bx, by, bw, bh);
+  // 画像があれば画像描画、なければ従来の色描画
+  const img = (block.defId != null) ? BLOCK_IMAGES[block.defId] : null;
 
-  // 接続面マーカー（死にブロックは薄い色）
-  ctx.strokeStyle = block.dead ? "#888" : "#333";
-  ctx.lineWidth = 2;
-  const cx = x + w / 2;
-  const cy = y + h / 2;
+  if (img && img.complete && img.naturalWidth > 0) {
+    // 回転を適用して画像を描画
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.rotate((block.rotation || 0) * Math.PI / 2);
+    if (block.dead) ctx.globalAlpha *= 0.4;
+    ctx.drawImage(img, -bw / 2, -bh / 2, bw, bh);
+    ctx.restore();
+  } else {
+    // フォールバック: 色ブロック描画
+    ctx.fillStyle = block.dead ? "#b0b0b0" : (TYPE_COLORS[block.type] || "#ccc");
+    ctx.fillRect(bx, by, bw, bh);
 
-  if (block.sides[0] !== 0) {
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, y + padding); ctx.stroke();
-  }
-  if (block.sides[1] !== 0) {
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x + w - padding, cy); ctx.stroke();
-  }
-  if (block.sides[2] !== 0) {
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, y + h - padding); ctx.stroke();
-  }
-  if (block.sides[3] !== 0) {
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x + padding, cy); ctx.stroke();
-  }
+    // 接続面マーカー
+    ctx.strokeStyle = block.dead ? "#888" : "#333";
+    ctx.lineWidth = 2;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
 
-  // 辺の値テキスト（デバッグ用）
-  ctx.fillStyle = "#fff";
-  ctx.font = `${Math.max(8, w * 0.2)}px monospace`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  if (block.sides[0] !== 0) ctx.fillText(block.sides[0], cx, y + h * 0.15);
-  if (block.sides[1] !== 0) ctx.fillText(block.sides[1], x + w * 0.85, cy);
-  if (block.sides[2] !== 0) ctx.fillText(block.sides[2], cx, y + h * 0.85);
-  if (block.sides[3] !== 0) ctx.fillText(block.sides[3], x + w * 0.15, cy);
-  ctx.textAlign = "start";
-  ctx.textBaseline = "alphabetic";
+    if (block.sides[0] !== 0) {
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, y + padding); ctx.stroke();
+    }
+    if (block.sides[1] !== 0) {
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x + w - padding, cy); ctx.stroke();
+    }
+    if (block.sides[2] !== 0) {
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, y + h - padding); ctx.stroke();
+    }
+    if (block.sides[3] !== 0) {
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x + padding, cy); ctx.stroke();
+    }
+
+    // 辺の値テキスト（デバッグ用）
+    ctx.fillStyle = "#fff";
+    ctx.font = `${Math.max(8, w * 0.2)}px monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    if (block.sides[0] !== 0) ctx.fillText(block.sides[0], cx, y + h * 0.15);
+    if (block.sides[1] !== 0) ctx.fillText(block.sides[1], x + w * 0.85, cy);
+    if (block.sides[2] !== 0) ctx.fillText(block.sides[2], cx, y + h * 0.85);
+    if (block.sides[3] !== 0) ctx.fillText(block.sides[3], x + w * 0.15, cy);
+    ctx.textAlign = "start";
+    ctx.textBaseline = "alphabetic";
+  }
 }
 
 /** 盤面上のブロックを描画 */
@@ -726,9 +758,10 @@ function restartGame() {
 }
 
 // === 初期化 ===
-function init() {
+async function init() {
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
+  await loadBlockDefs();
   requestAnimationFrame(gameLoop);
 }
 
