@@ -13,7 +13,8 @@ const FAST_FALL_INTERVAL = 0.05; // 高速落下間隔（秒）
 
 // === 禁止ペア（接続不可の辺の値の組み合わせ） ===
 const FORBIDDEN_PAIRS = new Set([
-  "3,4", "4,3", "1,1", "2,2", "1,3", "2,4", "4,1", "3,2"
+  // "3,4", "4,3", "1,1", "2,2", "1,3", "2,4", "4,1", "3,2" // きびしめモード
+  // かんたんモードは、すべての非ゼロ接続を許可（互換・非互換の区別なし）
 ]);
 
 /** 2つの辺の値が接続可能かどうか判定 */
@@ -300,11 +301,11 @@ function findCompletedCats() {
         }
       }
 
-      // 完成判定: 全ブロックの非ゼロ接続面が空きマス・壁に面していないか
+      // 完成判定: 全ブロックの非ゼロ接続面が互換な隣接ブロックで満たされているか
       let hasOpenSide = false;
       for (const pos of blocks) {
         const b = game.board[pos.row][pos.col];
-        for (const [dr, dc, si] of DIRECTIONS) {
+        for (const [dr, dc, si, sj] of DIRECTIONS) {
           if (b.sides[si] === 0) continue; // 接続なしの辺はスキップ
           const nr = pos.row + dr;
           const nc = pos.col + dc;
@@ -315,6 +316,12 @@ function findCompletedCats() {
           }
           // 空きマスに面している → 開いている
           if (game.board[nr][nc] === null) {
+            hasOpenSide = true;
+            break;
+          }
+          // 隣接ブロックと互換接続でない → 開いている（非互換は塞いだことにならない）
+          const nb = game.board[nr][nc];
+          if (!canConnect(b.sides[si], nb.sides[sj])) {
             hasOpenSide = true;
             break;
           }
@@ -463,7 +470,7 @@ function drawBlockAt(block, x, y, w, h, padding) {
   }
 
   // 辺の値テキスト（デバッグ用）
-  ctx.fillStyle = "#333";
+  ctx.fillStyle = "#fff";
   ctx.font = `${Math.max(8, w * 0.2)}px monospace`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
