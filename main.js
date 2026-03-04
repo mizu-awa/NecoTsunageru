@@ -675,7 +675,6 @@ function draw() {
   if (game.bombEffect) drawBombEffect();
   drawCurrentBlock();
   drawNextBlocks();
-  drawDebugInfo();
 
   if (game.state === "gameover") {
     drawGameOver();
@@ -1148,11 +1147,6 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function drawDebugInfo() {
-  ctx.fillStyle = "#aaa";
-  ctx.font = "12px monospace";
-  ctx.fillText(`${canvasCssW}x${canvasCssH}  猫:${game.catCount}`, 4, canvasCssH - 4);
-}
 
 function updateScoreDisplay() {
   const el = document.getElementById("score-display");
