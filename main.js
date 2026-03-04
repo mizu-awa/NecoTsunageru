@@ -421,6 +421,7 @@ function processCompletions() {
         block: { ...game.board[pos.row][pos.col] },
       }));
       game.catPopupQueue.push({ blocks: popupBlocks, timer: 0, duration: 2.5, baseScore }); // キューに追加
+      saveCatRecord(popupBlocks, baseScore);
 
       // 盤面から消去
       for (const pos of cat.blocks) {
@@ -607,6 +608,11 @@ function update(dt) {
     }
   }
 
+  if (game.state === "gallery") {
+    updateGallery(dt);
+    return;
+  }
+
   if (game.state !== "playing") return;
 
   // 爆発エフェクト処理（エフェクト中は通常処理をスキップ）
@@ -665,6 +671,10 @@ function update(dt) {
 
 // === 描画 ===
 function draw() {
+  if (game.state === "gallery") {
+    drawGallery();
+    return;
+  }
   ctx.clearRect(0, 0, canvasCssW, canvasCssH);
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, canvasCssW, canvasCssH);
@@ -909,6 +919,15 @@ function drawTitleScreen() {
   ctx.fillStyle = "#ffe082";
   ctx.fillText("スペースキー / タップ でスタート", canvasCssW / 2, canvasCssH * 0.66);
 
+  // ギャラリーボタン
+  const gallBtn = getGalleryBtnRect("title");
+  ctx.fillStyle = "rgba(200, 160, 100, 0.82)";
+  roundRect(ctx, gallBtn.x, gallBtn.y, gallBtn.w, gallBtn.h, 10);
+  ctx.fill();
+  ctx.font = `bold ${Math.round(gallBtn.h * 0.42)}px sans-serif`;
+  ctx.fillStyle = "#fff";
+  ctx.fillText("ギャラリーを見る", canvasCssW / 2, gallBtn.y + gallBtn.h / 2);
+
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
 }
@@ -936,6 +955,15 @@ function drawGameOver() {
   ctx.font = `${canvasCssW * 0.035}px sans-serif`;
   ctx.fillStyle = "#ccc";
   ctx.fillText("スペースキー / タップ でもう一度", canvasCssW / 2, canvasCssH * 0.68);
+
+  // ギャラリーボタン
+  const gallBtn = getGalleryBtnRect("gameover");
+  ctx.fillStyle = "rgba(200, 160, 100, 0.82)";
+  roundRect(ctx, gallBtn.x, gallBtn.y, gallBtn.w, gallBtn.h, 10);
+  ctx.fill();
+  ctx.font = `bold ${Math.round(gallBtn.h * 0.42)}px sans-serif`;
+  ctx.fillStyle = "#fff";
+  ctx.fillText("ギャラリーを見る", canvasCssW / 2, gallBtn.y + gallBtn.h / 2);
 
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
@@ -1153,8 +1181,354 @@ function updateScoreDisplay() {
   if (el) el.textContent = game.score;
 }
 
+// === ギャラリー画面 ===
+const GALLERY_COLS = 3;
+const GALLERY_HEADER_H = 52;
+
+const galleryState = {
+  cats: [],
+  selectedIdx: -1,
+  animTime: 0,
+  squishes: {},       // idx → { t, dur }
+  detailSquish: { t: 0, dur: 0.35, active: false },
+  scrollY: 0,
+  fromState: "title",
+  touchStartY: 0,
+  scrollStartY: 0,
+  scrolled: false,
+  detailBounds: null,
+};
+
+function openGallery(fromState) {
+  galleryState.fromState = fromState;
+  galleryState.cats = loadGallery().reverse(); // 新しい順
+  galleryState.selectedIdx = -1;
+  galleryState.scrollY = 0;
+  galleryState.squishes = {};
+  galleryState.detailSquish = { t: 0, dur: 0.35, active: false };
+  galleryState.scrolled = false;
+  game.state = "gallery";
+}
+
+function closeGallery() {
+  game.state = galleryState.fromState;
+}
+
+function updateGallery(dt) {
+  galleryState.animTime += dt;
+  for (const idx in galleryState.squishes) {
+    galleryState.squishes[idx].t += dt;
+    if (galleryState.squishes[idx].t >= galleryState.squishes[idx].dur) {
+      delete galleryState.squishes[idx];
+    }
+  }
+  if (galleryState.detailSquish.active) {
+    galleryState.detailSquish.t += dt;
+    if (galleryState.detailSquish.t >= galleryState.detailSquish.dur) {
+      galleryState.detailSquish.active = false;
+    }
+  }
+}
+
+function getGalleryBtnRect(state) {
+  const btnW = canvasCssW * 0.55;
+  const btnH = Math.max(36, canvasCssH * 0.052);
+  const btnX = (canvasCssW - btnW) / 2;
+  const btnY = state === "title" ? canvasCssH * 0.77 : canvasCssH * 0.78;
+  return { x: btnX, y: btnY, w: btnW, h: btnH };
+}
+
+function touchToCanvas(touch) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (touch.clientX - rect.left) * (canvasCssW / rect.width),
+    y: (touch.clientY - rect.top) * (canvasCssH / rect.height),
+  };
+}
+
+function clickToCanvas(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (canvasCssW / rect.width),
+    y: (e.clientY - rect.top) * (canvasCssH / rect.height),
+  };
+}
+
+function onGalleryTap(cx, cy) {
+  // 拡大表示中
+  if (galleryState.selectedIdx >= 0) {
+    const db = galleryState.detailBounds;
+    if (db && cx >= db.x && cx <= db.x + db.w && cy >= db.y && cy <= db.y + db.h) {
+      // カードタップ → ぷにっ
+      galleryState.detailSquish = { t: 0, dur: 0.35, active: true };
+    } else {
+      // 外タップ → 閉じる
+      galleryState.selectedIdx = -1;
+    }
+    return;
+  }
+  // 戻るボタン
+  if (cx >= 4 && cx <= 72 && cy >= 8 && cy <= 44) {
+    closeGallery();
+    return;
+  }
+  if (cy < GALLERY_HEADER_H) return;
+
+  // サムネイルタップ
+  const thumbSize = canvasCssW / GALLERY_COLS;
+  const col = Math.floor(cx / thumbSize);
+  const row = Math.floor((cy - GALLERY_HEADER_H + galleryState.scrollY) / thumbSize);
+  if (col < 0 || col >= GALLERY_COLS || row < 0) return;
+  const idx = row * GALLERY_COLS + col;
+  if (idx < galleryState.cats.length) {
+    galleryState.squishes[idx] = { t: 0, dur: 0.3 };
+    galleryState.selectedIdx = idx;
+  }
+}
+
+function drawGallery() {
+  const thumbSize = canvasCssW / GALLERY_COLS;
+  const PAD = 5;
+
+  ctx.fillStyle = "#fdf6ee";
+  ctx.fillRect(0, 0, canvasCssW, canvasCssH);
+
+  // ヘッダー
+  ctx.fillStyle = "#f0e0c8";
+  ctx.fillRect(0, 0, canvasCssW, GALLERY_HEADER_H);
+  ctx.strokeStyle = "#ddc8a0";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, GALLERY_HEADER_H);
+  ctx.lineTo(canvasCssW, GALLERY_HEADER_H);
+  ctx.stroke();
+
+  // 戻るボタン
+  ctx.fillStyle = "#c4956a";
+  roundRect(ctx, 4, 8, 68, 36, 8);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 14px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("← 戻る", 38, 26);
+
+  // タイトル
+  ctx.fillStyle = "#5d4037";
+  ctx.font = `bold ${Math.round(canvasCssW * 0.052)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText("ねこギャラリー", canvasCssW / 2, GALLERY_HEADER_H / 2);
+
+  // 件数
+  ctx.font = `${Math.round(canvasCssW * 0.033)}px sans-serif`;
+  ctx.fillStyle = "#a1887f";
+  ctx.textAlign = "right";
+  ctx.fillText(`${galleryState.cats.length}匹`, canvasCssW - 8, GALLERY_HEADER_H / 2);
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+
+  if (galleryState.cats.length === 0) {
+    ctx.fillStyle = "#bcaaa4";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${Math.round(canvasCssW * 0.048)}px sans-serif`;
+    ctx.fillText("まだ猫がいません", canvasCssW / 2, canvasCssH * 0.5);
+    ctx.font = `${Math.round(canvasCssW * 0.033)}px sans-serif`;
+    ctx.fillText("猫を完成させると保存されます", canvasCssW / 2, canvasCssH * 0.58);
+    ctx.textAlign = "start";
+    ctx.textBaseline = "alphabetic";
+    return;
+  }
+
+  // グリッドをクリップして描画
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, GALLERY_HEADER_H, canvasCssW, canvasCssH - GALLERY_HEADER_H);
+  ctx.clip();
+
+  for (let i = 0; i < galleryState.cats.length; i++) {
+    const row = Math.floor(i / GALLERY_COLS);
+    const col = i % GALLERY_COLS;
+    const x = col * thumbSize;
+    const y = GALLERY_HEADER_H + row * thumbSize - galleryState.scrollY;
+    if (y + thumbSize < GALLERY_HEADER_H || y > canvasCssH) continue;
+
+    const isSelected = galleryState.selectedIdx === i;
+    ctx.fillStyle = isSelected ? "#ffe0cc" : "#fff8f2";
+    roundRect(ctx, x + PAD, y + PAD, thumbSize - PAD * 2, thumbSize - PAD * 2, 10);
+    ctx.fill();
+    ctx.strokeStyle = isSelected ? "#ff8a65" : "#e8d5bc";
+    ctx.lineWidth = isSelected ? 2.5 : 1;
+    roundRect(ctx, x + PAD, y + PAD, thumbSize - PAD * 2, thumbSize - PAD * 2, 10);
+    ctx.stroke();
+
+    const phase = i * 0.73;
+    const breath = 1 + 0.025 * Math.sin(galleryState.animTime * Math.PI * 0.8 + phase);
+    const sq = galleryState.squishes[i];
+    const squish = sq ? (1 - 0.18 * Math.sin(Math.min(sq.t / sq.dur, 1) * Math.PI)) : 1;
+    drawCatThumbnail(galleryState.cats[i], x, y, thumbSize, thumbSize, breath * squish);
+  }
+
+  ctx.restore();
+
+  // 拡大表示
+  if (galleryState.selectedIdx >= 0 && galleryState.selectedIdx < galleryState.cats.length) {
+    drawGalleryDetail(galleryState.cats[galleryState.selectedIdx]);
+  }
+}
+
+function drawCatThumbnail(cat, x, y, w, h, scale) {
+  const rows = cat.blocks.map(b => b.relRow);
+  const cols = cat.blocks.map(b => b.relCol);
+  const maxRow = Math.max(...rows, 0);
+  const maxCol = Math.max(...cols, 0);
+  const catW = maxCol + 1;
+  const catH = maxRow + 1;
+
+  const cellSize = Math.min((w * 0.72) / catW, (h * 0.72) / catH);
+  const totalW = catW * cellSize;
+  const totalH = catH * cellSize;
+  const originX = x + (w - totalW) / 2;
+  const originY = y + (h - totalH) / 2;
+
+  ctx.save();
+  ctx.translate(x + w / 2, y + h / 2);
+  ctx.scale(scale, scale);
+  ctx.translate(-(x + w / 2), -(y + h / 2));
+
+  for (const blk of cat.blocks) {
+    drawBlockAt(
+      { type: blk.type, sides: blk.sides, rotation: blk.rotation, defId: blk.defId },
+      originX + blk.relCol * cellSize, originY + blk.relRow * cellSize,
+      cellSize, cellSize, 1
+    );
+  }
+  ctx.restore();
+}
+
+function drawGalleryDetail(cat) {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+  ctx.fillRect(0, 0, canvasCssW, canvasCssH);
+
+  const rows = cat.blocks.map(b => b.relRow);
+  const cols = cat.blocks.map(b => b.relCol);
+  const catW = Math.max(...cols, 0) + 1;
+  const catH = Math.max(...rows, 0) + 1;
+
+  const cellSize = Math.min((canvasCssW * 0.78) / catW, (canvasCssH * 0.60) / catH);
+  const totalW = catW * cellSize;
+  const totalH = catH * cellSize;
+
+  const pad = 20;
+  const scoreFontSize = Math.round(canvasCssW * 0.055);
+  const scoreRowH = scoreFontSize + 12;
+  const bgW = totalW + pad * 2;
+  const bgH = totalH + pad * 2 + scoreRowH;
+  const bgX = (canvasCssW - bgW) / 2;
+  const bgY = (canvasCssH - bgH) / 2 - 10;
+
+  galleryState.detailBounds = { x: bgX, y: bgY, w: bgW, h: bgH };
+
+  ctx.fillStyle = "rgba(255, 250, 240, 0.97)";
+  roundRect(ctx, bgX, bgY, bgW, bgH, 16);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(200, 165, 110, 0.8)";
+  ctx.lineWidth = 2.5;
+  roundRect(ctx, bgX, bgY, bgW, bgH, 16);
+  ctx.stroke();
+
+  // 呼吸 + ぷにっスケール
+  const breath = 1 + 0.03 * Math.sin(galleryState.animTime * Math.PI * 0.8);
+  const ds = galleryState.detailSquish;
+  const squish = ds.active ? (1 - 0.22 * Math.sin(Math.min(ds.t / ds.dur, 1) * Math.PI)) : 1;
+
+  const catCx = bgX + pad + totalW / 2;
+  const catCy = bgY + pad + totalH / 2;
+  ctx.save();
+  ctx.translate(catCx, catCy);
+  ctx.scale(breath * squish, breath * squish);
+  ctx.translate(-catCx, -catCy);
+
+  for (const blk of cat.blocks) {
+    drawBlockAt(
+      { type: blk.type, sides: blk.sides, rotation: blk.rotation, defId: blk.defId },
+      bgX + pad + blk.relCol * cellSize, bgY + pad + blk.relRow * cellSize,
+      cellSize, cellSize, 2
+    );
+  }
+  ctx.restore();
+
+  // スコア
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `bold ${scoreFontSize}px sans-serif`;
+  ctx.fillStyle = "rgba(0,0,0,0.15)";
+  ctx.fillText(`${cat.score} pt`, bgX + bgW / 2 + 1, bgY + pad + totalH + scoreRowH / 2 + 1);
+  ctx.fillStyle = "#e65100";
+  ctx.fillText(`${cat.score} pt`, bgX + bgW / 2, bgY + pad + totalH + scoreRowH / 2);
+
+  // ヒントテキスト
+  ctx.font = `${Math.round(canvasCssW * 0.030)}px sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.fillText("タップでぷにっ  外をタップで閉じる", canvasCssW / 2, bgY + bgH + 22);
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+
+// === ギャラリー（localStorageへの保存） ===
+const GALLERY_STORAGE_KEY = "nekotsunageru_gallery";
+
+function loadGallery() {
+  try {
+    return JSON.parse(localStorage.getItem(GALLERY_STORAGE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+/** 完成猫の形状データをlocalStorageに追記保存 */
+function saveCatRecord(popupBlocks, baseScore) {
+  const rows = popupBlocks.map(b => b.row);
+  const cols = popupBlocks.map(b => b.col);
+  const minRow = Math.min(...rows);
+  const minCol = Math.min(...cols);
+
+  const record = {
+    id: `${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+    savedAt: Date.now(),
+    score: baseScore,
+    blocks: popupBlocks.map(b => ({
+      relRow: b.row - minRow,
+      relCol: b.col - minCol,
+      defId: b.block.defId ?? null,
+      sides: [...b.block.sides],
+      rotation: b.block.rotation ?? 0,
+      type: b.block.type,
+    })),
+  };
+
+  const gallery = loadGallery();
+  gallery.push(record);
+  try {
+    localStorage.setItem(GALLERY_STORAGE_KEY, JSON.stringify(gallery));
+  } catch (e) {
+    console.warn("ギャラリー保存失敗:", e);
+  }
+}
+
 // === 入力: PCキーボード ===
 document.addEventListener("keydown", (e) => {
+  if (game.state === "gallery") {
+    if (e.key === "Escape") {
+      if (galleryState.selectedIdx >= 0) {
+        galleryState.selectedIdx = -1;
+      } else {
+        closeGallery();
+      }
+      e.preventDefault();
+    }
+    return;
+  }
   if (game.state === "title") {
     if (e.key === " " || e.key === "Enter") {
       startGame();
@@ -1217,12 +1591,31 @@ canvas.addEventListener("touchstart", (e) => {
   e.preventDefault();
 
   if (game.state === "title") {
-    startGame();
+    const pt = touchToCanvas(e.touches[0]);
+    const btn = getGalleryBtnRect("title");
+    if (pt.x >= btn.x && pt.x <= btn.x + btn.w && pt.y >= btn.y && pt.y <= btn.y + btn.h) {
+      openGallery("title");
+    } else {
+      startGame();
+    }
     return;
   }
 
   if (game.state === "gameover") {
-    restartGame();
+    const pt = touchToCanvas(e.touches[0]);
+    const btn = getGalleryBtnRect("gameover");
+    if (pt.x >= btn.x && pt.x <= btn.x + btn.w && pt.y >= btn.y && pt.y <= btn.y + btn.h) {
+      openGallery("gameover");
+    } else {
+      restartGame();
+    }
+    return;
+  }
+
+  if (game.state === "gallery") {
+    galleryState.touchStartY = e.touches[0].clientY;
+    galleryState.scrollStartY = galleryState.scrollY;
+    galleryState.scrolled = false;
     return;
   }
 
@@ -1242,6 +1635,16 @@ canvas.addEventListener("touchstart", (e) => {
 
 canvas.addEventListener("touchmove", (e) => {
   e.preventDefault();
+  if (game.state === "gallery") {
+    if (galleryState.selectedIdx >= 0) return;
+    const dy = e.touches[0].clientY - galleryState.touchStartY;
+    if (Math.abs(dy) > 8) galleryState.scrolled = true;
+    const thumbSize = canvasCssW / GALLERY_COLS;
+    const totalRows = Math.ceil(galleryState.cats.length / GALLERY_COLS);
+    const maxScroll = Math.max(0, totalRows * thumbSize - (canvasCssH - GALLERY_HEADER_H));
+    galleryState.scrollY = Math.max(0, Math.min(maxScroll, galleryState.scrollStartY - dy));
+    return;
+  }
   const touch = e.touches[0];
   const dx = touch.clientX - touchStartX;
 
@@ -1261,6 +1664,13 @@ canvas.addEventListener("touchmove", (e) => {
 
 canvas.addEventListener("touchend", (e) => {
   e.preventDefault();
+  if (game.state === "gallery") {
+    if (!galleryState.scrolled) {
+      const pt = touchToCanvas(e.changedTouches[0]);
+      onGalleryTap(pt.x, pt.y);
+    }
+    return;
+  }
   clearTimeout(longPressTimer);
   game.fastDrop = false;
 
@@ -1268,6 +1678,38 @@ canvas.addEventListener("touchend", (e) => {
   // 短いタップ → 回転
   if (!touchMoved && elapsed < 250) {
     rotateCurrentBlock();
+  }
+}, { passive: false });
+
+canvas.addEventListener("click", (e) => {
+  const { x, y } = clickToCanvas(e);
+  if (game.state === "title") {
+    const btn = getGalleryBtnRect("title");
+    if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) {
+      openGallery("title");
+    }
+    return;
+  }
+  if (game.state === "gameover") {
+    const btn = getGalleryBtnRect("gameover");
+    if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) {
+      openGallery("gameover");
+    }
+    return;
+  }
+  if (game.state === "gallery") {
+    onGalleryTap(x, y);
+    return;
+  }
+});
+
+canvas.addEventListener("wheel", (e) => {
+  if (game.state === "gallery" && galleryState.selectedIdx < 0) {
+    const thumbSize = canvasCssW / GALLERY_COLS;
+    const totalRows = Math.ceil(galleryState.cats.length / GALLERY_COLS);
+    const maxScroll = Math.max(0, totalRows * thumbSize - (canvasCssH - GALLERY_HEADER_H));
+    galleryState.scrollY = Math.max(0, Math.min(maxScroll, galleryState.scrollY + e.deltaY * 0.5));
+    e.preventDefault();
   }
 }, { passive: false });
 
