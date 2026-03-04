@@ -214,12 +214,14 @@ const game = {
   fastDrop: false,   // 高速落下中フラグ
   completedCats: [], // 完成した猫の履歴
   catCount: 0,       // 完成した猫の数
-  catPopups: [],     // 完成演出ポップアップ [ { blocks, timer, duration } ]
+  catPopups: [],     // 現在表示中のポップアップ（0か1つ）
+  catPopupQueue: [], // 表示待ちポップアップ（順番待ち）
   bombEffect: null,  // 爆発エフェクト { cells, row, col, timer, duration }
   fallingAnim: null, // 落下アニメーション { cells, progress, duration, onComplete }
   pendingGravityCallback: null, // ポップアップ消化後に実行する落下コールバック（連鎖制御）
   comboCount: 0,     // 連鎖カウンター（ブロック着地ごとにリセット）
   comboPopups: [],   // コンボ表示 [ { count, timer, duration } ]
+  simPopups: [],     // 同時消し表示 [ { count, timer, duration } ]
 };
 
 // === ブロック操作 ===
@@ -390,15 +392,26 @@ function calculateCatScore(cat) {
 function processCompletions() {
   const cats = findCompletedCats();
   if (cats.length > 0) {
-    game.comboCount++;
-    const comboMult = game.comboCount; // 1連鎖=×1, 2連鎖=×2, ...
+    const isSimultaneous = cats.length > 1;
+    let comboMult;
 
-    // コンボ表示を追加
-    game.comboPopups.push({ count: game.comboCount, timer: 0, duration: 1.6 });
+    if (isSimultaneous) {
+      // 同時消し: 連鎖カウントを増やさず、同時消しボーナスを適用
+      comboMult = Math.max(1, game.comboCount);
+      const simMult = 1 + (cats.length - 1) * 0.5; // 2匹=×1.5, 3匹=×2.0...
+      game.simPopups.push({ count: cats.length, simMult, timer: 0, duration: 1.6 });
+    } else {
+      // 1匹消し: 連鎖カウント++
+      game.comboCount++;
+      comboMult = game.comboCount;
+      game.comboPopups.push({ count: game.comboCount, timer: 0, duration: 1.6 });
+    }
+
+    const simultaneousMult = isSimultaneous ? 1 + (cats.length - 1) * 0.5 : 1;
 
     for (const cat of cats) {
       game.catCount++;
-      game.score += calculateCatScore(cat) * comboMult;
+      game.score += Math.round(calculateCatScore(cat) * comboMult * simultaneousMult);
 
       // 演出用: 盤面から消す前にブロックデータをコピー
       const popupBlocks = cat.blocks.map(pos => ({
@@ -406,7 +419,7 @@ function processCompletions() {
         col: pos.col,
         block: { ...game.board[pos.row][pos.col] },
       }));
-      game.catPopups.push({ blocks: popupBlocks, timer: 0, duration: 2.5 });
+      game.catPopupQueue.push({ blocks: popupBlocks, timer: 0, duration: 2.5 }); // キューに追加
 
       // 盤面から消去
       for (const pos of cat.blocks) {
@@ -572,6 +585,18 @@ function update(dt) {
       game.catPopups.splice(i, 1);
     }
   }
+  // キューから次のポップアップを取り出す（現在表示中がなければ）
+  if (game.catPopups.length === 0 && game.catPopupQueue.length > 0) {
+    game.catPopups.push(game.catPopupQueue.shift());
+  }
+
+  // 同時消しポップアップタイマー更新
+  for (let i = game.simPopups.length - 1; i >= 0; i--) {
+    game.simPopups[i].timer += dt;
+    if (game.simPopups[i].timer >= game.simPopups[i].duration) {
+      game.simPopups.splice(i, 1);
+    }
+  }
 
   // コンボポップアップタイマー更新
   for (let i = game.comboPopups.length - 1; i >= 0; i--) {
@@ -607,7 +632,7 @@ function update(dt) {
 
   // ポップアップ消化待ち（全ポップアップが消えたら落下＆連鎖チェックを実行）
   if (game.pendingGravityCallback) {
-    if (game.catPopups.length === 0) {
+    if (game.catPopups.length === 0 && game.catPopupQueue.length === 0) {
       const cb = game.pendingGravityCallback;
       game.pendingGravityCallback = null;
       cb();
@@ -657,6 +682,7 @@ function draw() {
 
   drawCatPopups();
   drawComboPopups();
+  drawSimPopups();
 }
 
 function getCellSize() {
@@ -1000,6 +1026,48 @@ function drawComboPopups() {
   ctx.restore();
 }
 
+/** 同時消しボーナス表示（N匹いっぺん！）*/
+function drawSimPopups() {
+  if (game.simPopups.length === 0) return;
+  const popup = game.simPopups[game.simPopups.length - 1];
+  const { count, simMult, timer, duration } = popup;
+
+  let alpha;
+  if (timer < 0.15) {
+    alpha = timer / 0.15;
+  } else if (timer > 1.2) {
+    alpha = 1 - (timer - 1.2) / (duration - 1.2);
+  } else {
+    alpha = 1;
+  }
+  alpha = Math.max(0, Math.min(1, alpha));
+
+  const floatY = timer / duration * canvasCssH * 0.06;
+  const cx = canvasCssW / 2;
+  const cy = canvasCssH * 0.28 - floatY;
+  const fontSize = Math.round(canvasCssW * 0.085);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.font = `bold ${fontSize}px sans-serif`;
+  ctx.fillText(`${count}匹いっぺん！`, cx + 2, cy + 2);
+
+  ctx.fillStyle = "#43a047";
+  ctx.fillText(`${count}匹いっぺん！`, cx, cy);
+
+  // ボーナス倍率の小文字表示
+  const subFontSize = Math.round(canvasCssW * 0.045);
+  ctx.font = `${subFontSize}px sans-serif`;
+  ctx.fillStyle = "rgba(67, 160, 71, 0.9)";
+  ctx.fillText(`×${simMult.toFixed(1)} ボーナス！`, cx, cy + fontSize * 0.8);
+
+  ctx.restore();
+}
+
 /** 角丸矩形パスを作成 */
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -1144,11 +1212,13 @@ function restartGame() {
   game.fastDrop = false;
   game.completedCats = [];
   game.catPopups = [];
+  game.catPopupQueue = [];
   game.bombEffect = null;
   game.fallingAnim = null;
   game.pendingGravityCallback = null;
   game.comboCount = 0;
   game.comboPopups = [];
+  game.simPopups = [];
   updateScoreDisplay();
 }
 
