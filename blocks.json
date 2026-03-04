@@ -7,6 +7,15 @@
     "4": "上下足あり"
   },
   "forbiddenPairs": [],
+  "scoring": {
+    "_comment": "スコア計算の重み設定",
+    "baseMultiplier": 10,
+    "hasHeadOrTailBonus": 0.5,
+    "hasHeadAndTailBonus": 0.5,
+    "balancedBonus": 0.5,
+    "perfectJointBonus": 15,
+    "perfectPairs": [[1,1],[2,3],[3,2],[4,4]]
+  },
   "spawnWeights": {
     "head": 20,
     "tail": 20,

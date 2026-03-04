@@ -79,6 +79,19 @@ async function loadBlockDefs() {
     FORBIDDEN_PAIRS = new Set(data.forbiddenPairs.map(p => p.join(",")));
   }
 
+  // スコア設定
+  if (data.scoring) {
+    const s = data.scoring;
+    if (s.perfectPairs) PERFECT_PAIRS = new Set(s.perfectPairs.map(p => p.join(",")));
+    SCORE_CONFIG = {
+      baseMultiplier:      s.baseMultiplier      ?? SCORE_CONFIG.baseMultiplier,
+      hasHeadOrTailBonus:  s.hasHeadOrTailBonus  ?? SCORE_CONFIG.hasHeadOrTailBonus,
+      hasHeadAndTailBonus: s.hasHeadAndTailBonus ?? SCORE_CONFIG.hasHeadAndTailBonus,
+      balancedBonus:       s.balancedBonus       ?? SCORE_CONFIG.balancedBonus,
+      perfectJointBonus:   s.perfectJointBonus   ?? SCORE_CONFIG.perfectJointBonus,
+    };
+  }
+
   // スポーン重み
   SPAWN_WEIGHTS = data.spawnWeights;
   SPAWN_WEIGHT_TOTAL = Object.values(SPAWN_WEIGHTS).reduce((a, b) => a + b, 0);
@@ -291,13 +304,57 @@ function markDeadBlocks() {
 
 // === 完成判定 ===
 
+let PERFECT_PAIRS = new Set(['1,1', '2,3', '3,2', '4,4']);
+let SCORE_CONFIG = {
+  baseMultiplier: 10,
+  hasHeadOrTailBonus: 0.5,
+  hasHeadAndTailBonus: 0.5,
+  balancedBonus: 0.5,
+  perfectJointBonus: 15,
+};
+
+function calculateCatScore(cat) {
+  const n = cat.blocks.length;
+  const base = SCORE_CONFIG.baseMultiplier * n * n;
+
+  // 頭/しっぽ倍率
+  let heads = 0, tails = 0;
+  for (const pos of cat.blocks) {
+    const b = game.board[pos.row][pos.col];
+    if (b.type === 'head') heads++;
+    if (b.type === 'tail') tails++;
+  }
+  let mult = 1.0;
+  if (heads > 0 || tails > 0) mult += SCORE_CONFIG.hasHeadOrTailBonus;
+  if (heads > 0 && tails > 0) mult += SCORE_CONFIG.hasHeadAndTailBonus;
+  if (heads > 0 && tails > 0 && heads === tails) mult += SCORE_CONFIG.balancedBonus;
+
+  // 接合部ボーナス
+  let perfectJoints = 0;
+  const catSet = new Set(cat.blocks.map(pos => `${pos.row},${pos.col}`));
+  for (const pos of cat.blocks) {
+    const b = game.board[pos.row][pos.col];
+    for (const [dr, dc, si, sj] of DIRECTIONS) {
+      if (b.sides[si] === 0) continue;
+      const nr = pos.row + dr;
+      const nc = pos.col + dc;
+      if (!catSet.has(`${nr},${nc}`)) continue;
+      const nb = game.board[nr][nc];
+      if (PERFECT_PAIRS.has(`${b.sides[si]},${nb.sides[sj]}`)) perfectJoints++;
+    }
+  }
+  perfectJoints = Math.floor(perfectJoints / 2);
+
+  return Math.round(base * mult) + perfectJoints * SCORE_CONFIG.perfectJointBonus;
+}
+
 /** 完成猫を探して消去。連鎖も処理する */
 function processCompletions() {
   const cats = findCompletedCats();
   if (cats.length > 0) {
     for (const cat of cats) {
       game.catCount++;
-      game.score += cat.blocks.length * 10;
+      game.score += calculateCatScore(cat);
 
       // 演出用: 盤面から消す前にブロックデータをコピー
       const popupBlocks = cat.blocks.map(pos => ({
