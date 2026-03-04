@@ -204,7 +204,7 @@ function createBoard() {
 // === ゲーム状態 ===
 const game = {
   running: true,
-  state: "playing", // "playing" | "gameover"
+  state: "title", // "title" | "playing" | "gameover"
   lastTime: 0,
   score: 0,
   board: createBoard(),
@@ -411,7 +411,8 @@ function processCompletions() {
 
     for (const cat of cats) {
       game.catCount++;
-      game.score += Math.round(calculateCatScore(cat) * comboMult * simultaneousMult);
+      const baseScore = calculateCatScore(cat);
+      game.score += Math.round(baseScore * comboMult * simultaneousMult);
 
       // 演出用: 盤面から消す前にブロックデータをコピー
       const popupBlocks = cat.blocks.map(pos => ({
@@ -419,7 +420,7 @@ function processCompletions() {
         col: pos.col,
         block: { ...game.board[pos.row][pos.col] },
       }));
-      game.catPopupQueue.push({ blocks: popupBlocks, timer: 0, duration: 2.5 }); // キューに追加
+      game.catPopupQueue.push({ blocks: popupBlocks, timer: 0, duration: 2.5, baseScore }); // キューに追加
 
       // 盤面から消去
       for (const pos of cat.blocks) {
@@ -680,6 +681,10 @@ function draw() {
     drawGameOver();
   }
 
+  if (game.state === "title") {
+    drawTitleScreen();
+  }
+
   drawCatPopups();
   drawComboPopups();
   drawSimPopups();
@@ -885,6 +890,30 @@ function drawNextBlocks() {
   }
 }
 
+/** タイトル画面 */
+function drawTitleScreen() {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+  ctx.fillRect(0, 0, canvasCssW, canvasCssH);
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  ctx.fillStyle = "#fff";
+  ctx.font = `bold ${canvasCssW * 0.1}px sans-serif`;
+  ctx.fillText("ねこつなげる", canvasCssW / 2, canvasCssH * 0.38);
+
+  ctx.font = `${canvasCssW * 0.038}px sans-serif`;
+  ctx.fillStyle = "#ddd";
+  ctx.fillText("猫パーツをつなげて猫を完成させよう", canvasCssW / 2, canvasCssH * 0.52);
+
+  ctx.font = `bold ${canvasCssW * 0.046}px sans-serif`;
+  ctx.fillStyle = "#ffe082";
+  ctx.fillText("スペースキー / タップ でスタート", canvasCssW / 2, canvasCssH * 0.66);
+
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+
 /** ゲームオーバー画面 */
 function drawGameOver() {
   // 暗転オーバーレイ
@@ -954,8 +983,10 @@ function drawCatPopups() {
 
   const totalW = catW * popCellW;
   const totalH = catH * popCellH;
+  const scoreFontSize = Math.round(Math.min(popCellW, popCellH) * 0.32);
+  const scoreRowH = scoreFontSize + 10;
   const originX = (canvasCssW - totalW) / 2;
-  const originY = (canvasCssH - totalH) / 2;
+  const originY = (canvasCssH - totalH - scoreRowH) / 2;
 
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -963,13 +994,13 @@ function drawCatPopups() {
   // 背景（角丸の薄い白）
   const pad = 16;
   ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
-  roundRect(ctx, originX - pad, originY - pad, totalW + pad * 2, totalH + pad * 2, 12);
+  roundRect(ctx, originX - pad, originY - pad, totalW + pad * 2, totalH + pad * 2 + scoreRowH, 12);
   ctx.fill();
 
   // 枠線
   ctx.strokeStyle = "rgba(180, 160, 140, 0.7)";
   ctx.lineWidth = 2;
-  roundRect(ctx, originX - pad, originY - pad, totalW + pad * 2, totalH + pad * 2, 12);
+  roundRect(ctx, originX - pad, originY - pad, totalW + pad * 2, totalH + pad * 2 + scoreRowH, 12);
   ctx.stroke();
 
   // ブロック描画
@@ -977,6 +1008,20 @@ function drawCatPopups() {
     const x = originX + (col - minCol) * popCellW;
     const y = originY + (row - minRow) * popCellH;
     drawBlockAt(block, x, y, popCellW, popCellH, 2);
+  }
+
+  // スコア表示
+  if (popup.baseScore != null) {
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const scoreY = originY + totalH + pad + scoreRowH / 2;
+    ctx.font = `bold ${scoreFontSize}px sans-serif`;
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.fillText(`+${popup.baseScore} pt`, originX + totalW / 2 + 1, scoreY + 1);
+    ctx.fillStyle = "#e65100";
+    ctx.fillText(`+${popup.baseScore} pt`, originX + totalW / 2, scoreY);
+    ctx.textAlign = "start";
+    ctx.textBaseline = "alphabetic";
   }
 
   ctx.restore();
@@ -1012,16 +1057,36 @@ function drawComboPopups() {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
+  const mainText = `${count} COMBO!`;
+  ctx.font = `bold ${fontSize}px sans-serif`;
+  const mainW = ctx.measureText(mainText).width;
+  const multFontSize = Math.round(fontSize * 0.42);
+  const multText = `×${count}`;
+  ctx.font = `bold ${multFontSize}px sans-serif`;
+  const multW = ctx.measureText(multText).width;
+  ctx.font = `bold ${fontSize}px sans-serif`;
+  const totalTextW = mainW + 6 + multW;
+  const textLeft = cx - totalTextW / 2;
+
   // 影
   ctx.fillStyle = "rgba(0,0,0,0.25)";
-  ctx.font = `bold ${fontSize}px sans-serif`;
-  ctx.fillText(`${count} COMBO!`, cx + 2, cy + 2);
+  ctx.textAlign = "left";
+  ctx.fillText(mainText, textLeft + 2, cy + 2);
 
   // 本文（コンボ数で色を変える）
   const colors = ["#f9a825", "#ff7043", "#e91e63", "#9c27b0", "#3f51b5"];
   const color = colors[Math.min(count - 1, colors.length - 1)];
   ctx.fillStyle = color;
-  ctx.fillText(`${count} COMBO!`, cx, cy);
+  ctx.fillText(mainText, textLeft, cy);
+
+  // 倍率（小さく右横）
+  ctx.font = `bold ${multFontSize}px sans-serif`;
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fillText(multText, textLeft + mainW + 6 + 1, cy + fontSize * 0.08 + 1);
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.fillText(multText, textLeft + mainW + 6, cy + fontSize * 0.08);
+
+  ctx.textAlign = "center";
 
   ctx.restore();
 }
@@ -1096,6 +1161,13 @@ function updateScoreDisplay() {
 
 // === 入力: PCキーボード ===
 document.addEventListener("keydown", (e) => {
+  if (game.state === "title") {
+    if (e.key === " " || e.key === "Enter") {
+      startGame();
+      e.preventDefault();
+    }
+    return;
+  }
   if (game.state === "gameover") {
     if (e.key === " " || e.key === "Enter") {
       restartGame();
@@ -1150,6 +1222,11 @@ let longPressTimer = null;
 canvas.addEventListener("touchstart", (e) => {
   e.preventDefault();
 
+  if (game.state === "title") {
+    startGame();
+    return;
+  }
+
   if (game.state === "gameover") {
     restartGame();
     return;
@@ -1200,7 +1277,11 @@ canvas.addEventListener("touchend", (e) => {
   }
 }, { passive: false });
 
-// === リスタート ===
+// === スタート / リスタート ===
+function startGame() {
+  game.state = "playing";
+}
+
 function restartGame() {
   game.state = "playing";
   game.score = 0;
