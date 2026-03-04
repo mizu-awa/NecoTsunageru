@@ -8,8 +8,8 @@
   },
   "forbiddenPairs": [],
   "spawnWeights": {
-    "head": 10,
-    "tail": 10,
+    "head": 20,
+    "tail": 20,
     "straight": 15,
     "elbow": 25,
     "tee": 15,

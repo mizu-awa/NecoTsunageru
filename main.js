@@ -154,10 +154,13 @@ const TYPE_COLORS = {
 // === Canvas ===
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
+let canvasCssW = 0;
+let canvasCssH = 0;
 
 function resizeCanvas() {
   const containerW = window.innerWidth;
   const containerH = window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
 
   let canvasW, canvasH;
   if (containerW / containerH < ASPECT_W / ASPECT_H) {
@@ -168,10 +171,16 @@ function resizeCanvas() {
     canvasW = containerH * (ASPECT_W / ASPECT_H);
   }
 
-  canvas.width = Math.floor(canvasW);
-  canvas.height = Math.floor(canvasH);
-  canvas.style.width = canvas.width + "px";
-  canvas.style.height = canvas.height + "px";
+  canvasCssW = Math.floor(canvasW);
+  canvasCssH = Math.floor(canvasH);
+
+  canvas.width = canvasCssW * dpr;
+  canvas.height = canvasCssH * dpr;
+  canvas.style.width = canvasCssW + "px";
+  canvas.style.height = canvasCssH + "px";
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
 }
 
 // === 盤面 ===
@@ -447,9 +456,9 @@ function update(dt) {
 
 // === 描画 ===
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvasCssW, canvasCssH);
   ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, canvasCssW, canvasCssH);
 
   drawGridLines();
   drawBoard();
@@ -464,8 +473,8 @@ function draw() {
 
 function getCellSize() {
   return {
-    w: canvas.width / BOARD_COLS,
-    h: canvas.height / BOARD_ROWS,
+    w: canvasCssW / BOARD_COLS,
+    h: canvasCssH / BOARD_ROWS,
   };
 }
 
@@ -477,13 +486,13 @@ function drawGridLines() {
   for (let x = 0; x <= BOARD_COLS; x++) {
     ctx.beginPath();
     ctx.moveTo(x * w, 0);
-    ctx.lineTo(x * w, canvas.height);
+    ctx.lineTo(x * w, canvasCssH);
     ctx.stroke();
   }
   for (let y = 0; y <= BOARD_ROWS; y++) {
     ctx.beginPath();
     ctx.moveTo(0, y * h);
-    ctx.lineTo(canvas.width, y * h);
+    ctx.lineTo(canvasCssW, y * h);
     ctx.stroke();
   }
 }
@@ -580,7 +589,7 @@ function drawNextBlocks() {
   const { w, h } = getCellSize();
   const previewSize = Math.min(w, h) * 0.8;
   const margin = 6;
-  const startX = canvas.width - previewSize - margin;
+  const startX = canvasCssW - previewSize - margin;
   const startY = margin;
 
   // 背景
@@ -610,25 +619,25 @@ function drawNextBlocks() {
 function drawGameOver() {
   // 暗転オーバーレイ
   ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, canvasCssW, canvasCssH);
 
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
   // タイトル
-  ctx.font = `bold ${canvas.width * 0.09}px sans-serif`;
-  ctx.fillText("ねこづまり！", canvas.width / 2, canvas.height * 0.35);
+  ctx.font = `bold ${canvasCssW * 0.09}px sans-serif`;
+  ctx.fillText("ねこづまり！", canvasCssW / 2, canvasCssH * 0.35);
 
   // スコア
-  ctx.font = `${canvas.width * 0.05}px sans-serif`;
-  ctx.fillText(`スコア: ${game.score}`, canvas.width / 2, canvas.height * 0.48);
-  ctx.fillText(`完成した猫: ${game.catCount}匹`, canvas.width / 2, canvas.height * 0.55);
+  ctx.font = `${canvasCssW * 0.05}px sans-serif`;
+  ctx.fillText(`スコア: ${game.score}`, canvasCssW / 2, canvasCssH * 0.48);
+  ctx.fillText(`完成した猫: ${game.catCount}匹`, canvasCssW / 2, canvasCssH * 0.55);
 
   // リスタート案内
-  ctx.font = `${canvas.width * 0.035}px sans-serif`;
+  ctx.font = `${canvasCssW * 0.035}px sans-serif`;
   ctx.fillStyle = "#ccc";
-  ctx.fillText("スペースキー / タップ でもう一度", canvas.width / 2, canvas.height * 0.68);
+  ctx.fillText("スペースキー / タップ でもう一度", canvasCssW / 2, canvasCssH * 0.68);
 
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
@@ -637,7 +646,7 @@ function drawGameOver() {
 function drawDebugInfo() {
   ctx.fillStyle = "#aaa";
   ctx.font = "12px monospace";
-  ctx.fillText(`${canvas.width}x${canvas.height}  猫:${game.catCount}`, 4, canvas.height - 4);
+  ctx.fillText(`${canvasCssW}x${canvasCssH}  猫:${game.catCount}`, 4, canvasCssH - 4);
 }
 
 function updateScoreDisplay() {
