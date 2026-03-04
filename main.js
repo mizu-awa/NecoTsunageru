@@ -217,6 +217,9 @@ const game = {
   catPopups: [],     // 完成演出ポップアップ [ { blocks, timer, duration } ]
   bombEffect: null,  // 爆発エフェクト { cells, row, col, timer, duration }
   fallingAnim: null, // 落下アニメーション { cells, progress, duration, onComplete }
+  pendingGravityCallback: null, // ポップアップ消化後に実行する落下コールバック（連鎖制御）
+  comboCount: 0,     // 連鎖カウンター（ブロック着地ごとにリセット）
+  comboPopups: [],   // コンボ表示 [ { count, timer, duration } ]
 };
 
 // === ブロック操作 ===
@@ -268,6 +271,7 @@ function rotateCurrentBlock() {
 function lockCurrentBlock() {
   const { block, row, col } = game.current;
   game.current = null;
+  game.comboCount = 0; // 新ブロック着地でコンボリセット
 
   if (block.type === "bomb") {
     explodeBomb(row, col);
@@ -302,6 +306,7 @@ function finishBombExplosion(row, col) {
       game.board[nr][nc] = null;
     }
   }
+  game.comboCount = 0; // 爆弾後もコンボリセット
   applyGravityAnimated(() => {
     processCompletions();
   });
@@ -385,9 +390,15 @@ function calculateCatScore(cat) {
 function processCompletions() {
   const cats = findCompletedCats();
   if (cats.length > 0) {
+    game.comboCount++;
+    const comboMult = game.comboCount; // 1連鎖=×1, 2連鎖=×2, ...
+
+    // コンボ表示を追加
+    game.comboPopups.push({ count: game.comboCount, timer: 0, duration: 1.6 });
+
     for (const cat of cats) {
       game.catCount++;
-      game.score += calculateCatScore(cat);
+      game.score += calculateCatScore(cat) * comboMult;
 
       // 演出用: 盤面から消す前にブロックデータをコピー
       const popupBlocks = cat.blocks.map(pos => ({
@@ -405,10 +416,12 @@ function processCompletions() {
     }
     updateScoreDisplay();
 
-    // 消去後に落下アニメーション → 完了後に連鎖チェック
-    applyGravityAnimated(() => {
-      processCompletions();
-    });
+    // ポップアップが全部消えるまで待ってから落下させる（連鎖演出）
+    game.pendingGravityCallback = () => {
+      applyGravityAnimated(() => {
+        processCompletions();
+      });
+    };
   } else {
     // 猫なし → 死にブロック判定で終了
     markDeadBlocks();
@@ -560,6 +573,14 @@ function update(dt) {
     }
   }
 
+  // コンボポップアップタイマー更新
+  for (let i = game.comboPopups.length - 1; i >= 0; i--) {
+    game.comboPopups[i].timer += dt;
+    if (game.comboPopups[i].timer >= game.comboPopups[i].duration) {
+      game.comboPopups.splice(i, 1);
+    }
+  }
+
   if (game.state !== "playing") return;
 
   // 爆発エフェクト処理（エフェクト中は通常処理をスキップ）
@@ -580,6 +601,16 @@ function update(dt) {
       const { onComplete } = game.fallingAnim;
       game.fallingAnim = null;
       onComplete();
+    }
+    return;
+  }
+
+  // ポップアップ消化待ち（全ポップアップが消えたら落下＆連鎖チェックを実行）
+  if (game.pendingGravityCallback) {
+    if (game.catPopups.length === 0) {
+      const cb = game.pendingGravityCallback;
+      game.pendingGravityCallback = null;
+      cb();
     }
     return;
   }
@@ -625,6 +656,7 @@ function draw() {
   }
 
   drawCatPopups();
+  drawComboPopups();
 }
 
 function getCellSize() {
@@ -924,6 +956,50 @@ function drawCatPopups() {
   ctx.restore();
 }
 
+/** コンボ表示（○COMBO!）をふわっと表示 */
+function drawComboPopups() {
+  if (game.comboPopups.length === 0) return;
+  // 最新のコンボのみ表示
+  const popup = game.comboPopups[game.comboPopups.length - 1];
+  const { count, timer, duration } = popup;
+
+  // フェード: 0〜0.15秒でイン、1.2〜1.6秒でアウト
+  let alpha;
+  if (timer < 0.15) {
+    alpha = timer / 0.15;
+  } else if (timer > 1.2) {
+    alpha = 1 - (timer - 1.2) / (duration - 1.2);
+  } else {
+    alpha = 1;
+  }
+  alpha = Math.max(0, Math.min(1, alpha));
+
+  // 上方向にふわっとフロート
+  const floatY = timer / duration * canvasCssH * 0.06;
+
+  const cx = canvasCssW / 2;
+  const cy = canvasCssH * 0.28 - floatY;
+  const fontSize = Math.round(canvasCssW * 0.1);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // 影
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.font = `bold ${fontSize}px sans-serif`;
+  ctx.fillText(`${count} COMBO!`, cx + 2, cy + 2);
+
+  // 本文（コンボ数で色を変える）
+  const colors = ["#f9a825", "#ff7043", "#e91e63", "#9c27b0", "#3f51b5"];
+  const color = colors[Math.min(count - 1, colors.length - 1)];
+  ctx.fillStyle = color;
+  ctx.fillText(`${count} COMBO!`, cx, cy);
+
+  ctx.restore();
+}
+
 /** 角丸矩形パスを作成 */
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -1070,6 +1146,9 @@ function restartGame() {
   game.catPopups = [];
   game.bombEffect = null;
   game.fallingAnim = null;
+  game.pendingGravityCallback = null;
+  game.comboCount = 0;
+  game.comboPopups = [];
   updateScoreDisplay();
 }
 
