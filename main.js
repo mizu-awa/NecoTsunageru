@@ -167,7 +167,7 @@ const TYPE_COLORS = {
 
 // === Canvas ===
 const canvas = document.getElementById("game-canvas");
-const ctx = canvas.getContext("2d");
+let ctx = canvas.getContext("2d");
 let canvasCssW = 0;
 let canvasCssH = 0;
 
@@ -983,10 +983,11 @@ function drawGameOver() {
 
 function getResultBtnRect(which) {
   const btnW = canvasCssW * 0.68;
-  const btnH = Math.max(40, canvasCssH * 0.065);
+  const btnH = Math.max(38, canvasCssH * 0.058);
   const btnX = (canvasCssW - btnW) / 2;
-  if (which === "restart") return { x: btnX, y: canvasCssH * 0.845, w: btnW, h: btnH };
-  if (which === "gallery") return { x: btnX, y: canvasCssH * 0.925, w: btnW, h: btnH };
+  if (which === "share")   return { x: btnX, y: canvasCssH * 0.815, w: btnW, h: btnH };
+  if (which === "restart") return { x: btnX, y: canvasCssH * 0.878, w: btnW, h: btnH };
+  if (which === "gallery") return { x: btnX, y: canvasCssH * 0.941, w: btnW, h: btnH };
 }
 
 function updateResult(dt) {
@@ -1075,6 +1076,14 @@ function drawResult() {
   }
 
   // ボタン
+  const shareBtn = getResultBtnRect("share");
+  ctx.fillStyle = cats.length > 0 ? "#5b9bd5" : "#c0bbb8";
+  roundRect(ctx, shareBtn.x, shareBtn.y, shareBtn.w, shareBtn.h, 12);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.font = `bold ${Math.round(shareBtn.h * 0.45)}px sans-serif`;
+  ctx.fillText(canShareFiles() ? "共有する 🐱" : "画像をダウンロード 🐱", canvasCssW / 2, shareBtn.y + shareBtn.h / 2);
+
   const restartBtn = getResultBtnRect("restart");
   ctx.fillStyle = "#a1887f";
   roundRect(ctx, restartBtn.x, restartBtn.y, restartBtn.w, restartBtn.h, 12);
@@ -1093,6 +1102,118 @@ function drawResult() {
 
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
+}
+
+// === SNSシェア ===
+
+/** シェア用画像（正方形）を生成して Blob を返す */
+function generateShareImage(cat) {
+  return new Promise(resolve => {
+    const SIZE = 900;
+    const offCanvas = document.createElement("canvas");
+    offCanvas.width = SIZE;
+    offCanvas.height = SIZE;
+
+    // ctx を一時的にオフスクリーンに差し替え
+    const origCtx = ctx;
+    const origW = canvasCssW;
+    const origH = canvasCssH;
+    ctx = offCanvas.getContext("2d");
+    canvasCssW = SIZE;
+    canvasCssH = SIZE;
+
+    // 背景
+    ctx.fillStyle = "#fff8f2";
+    ctx.fillRect(0, 0, SIZE, SIZE);
+
+    // 枠線
+    ctx.strokeStyle = "#d7b8a0";
+    ctx.lineWidth = 10;
+    ctx.strokeRect(5, 5, SIZE - 10, SIZE - 10);
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // タイトル
+    ctx.fillStyle = "#5d4037";
+    ctx.font = `bold ${Math.round(SIZE * 0.072)}px sans-serif`;
+    ctx.fillText("ねこつなげる", SIZE / 2, SIZE * 0.075);
+
+    // 猫描画
+    const catAreaSize = SIZE * 0.58;
+    const catAreaX = (SIZE - catAreaSize) / 2;
+    const catAreaY = SIZE * 0.115;
+    drawCatThumbnail(cat, catAreaX, catAreaY, catAreaSize, catAreaSize, 1.0);
+
+    // 区切り線
+    ctx.strokeStyle = "#d7ccc8";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(SIZE * 0.1, SIZE * 0.755);
+    ctx.lineTo(SIZE * 0.9, SIZE * 0.755);
+    ctx.stroke();
+
+    // スコア
+    ctx.fillStyle = "#5d4037";
+    ctx.font = `bold ${Math.round(SIZE * 0.072)}px sans-serif`;
+    ctx.fillText(`${game.score}点`, SIZE / 2, SIZE * 0.815);
+
+    // 完成数・最長
+    ctx.fillStyle = "#8d6e63";
+    ctx.font = `${Math.round(SIZE * 0.042)}px sans-serif`;
+    ctx.fillText(`完成した猫: ${game.catCount}匹`, SIZE / 2, SIZE * 0.872);
+
+    // 日付とハッシュタグ
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
+    ctx.fillStyle = "#bcaaa4";
+    ctx.font = `${Math.round(SIZE * 0.036)}px sans-serif`;
+    ctx.fillText(`${dateStr}  #ねこつなげる`, SIZE / 2, SIZE * 0.94);
+
+    // ctx を元に戻す
+    ctx = origCtx;
+    canvasCssW = origW;
+    canvasCssH = origH;
+
+    offCanvas.toBlob(resolve, "image/png");
+  });
+}
+
+/** ファイル付き Web Share API が使えるか判定 */
+function canShareFiles() {
+  try {
+    const dummy = new File([""], "test.png", { type: "image/png" });
+    return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [dummy] }));
+  } catch {
+    return false;
+  }
+}
+
+/** 現在表示中の猫をシェア（モバイル: 共有シート / PC: ダウンロード） */
+async function shareCurrentCat() {
+  const cat = game.sessionCats[game.resultCatIdx];
+  if (!cat) return;
+
+  const blob = await generateShareImage(cat);
+  const file = new File([blob], "nekotsunageru.png", { type: "image/png" });
+  const tweetText = `ねこつなげる で ${game.score}点！${game.catCount}匹の猫を完成させました！\n#ねこつなげる`;
+
+  if (canShareFiles()) {
+    // モバイル: Web Share API でファイルごと共有
+    try {
+      await navigator.share({ files: [file], text: tweetText });
+    } catch (e) {
+      if (e.name !== "AbortError") throw e;
+    }
+  } else {
+    // PC: 画像をダウンロードのみ
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "nekotsunageru.png";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
 }
 
 /** 完成ねこのポップアップ演出を描画 */
@@ -1743,9 +1864,13 @@ canvas.addEventListener("touchstart", (e) => {
 
   if (game.state === "result") {
     const pt = touchToCanvas(e.touches[0]);
+    const shareBtn  = getResultBtnRect("share");
     const restartBtn = getResultBtnRect("restart");
     const gallBtn = getResultBtnRect("gallery");
-    if (pt.x >= restartBtn.x && pt.x <= restartBtn.x + restartBtn.w &&
+    if (pt.x >= shareBtn.x && pt.x <= shareBtn.x + shareBtn.w &&
+        pt.y >= shareBtn.y && pt.y <= shareBtn.y + shareBtn.h) {
+      shareCurrentCat();
+    } else if (pt.x >= restartBtn.x && pt.x <= restartBtn.x + restartBtn.w &&
         pt.y >= restartBtn.y && pt.y <= restartBtn.y + restartBtn.h) {
       restartGame();
     } else if (pt.x >= gallBtn.x && pt.x <= gallBtn.x + gallBtn.w &&
@@ -1837,9 +1962,13 @@ canvas.addEventListener("click", (e) => {
     return;
   }
   if (game.state === "result") {
+    const shareBtn  = getResultBtnRect("share");
     const restartBtn = getResultBtnRect("restart");
     const gallBtn = getResultBtnRect("gallery");
-    if (x >= restartBtn.x && x <= restartBtn.x + restartBtn.w &&
+    if (x >= shareBtn.x && x <= shareBtn.x + shareBtn.w &&
+        y >= shareBtn.y && y <= shareBtn.y + shareBtn.h) {
+      shareCurrentCat();
+    } else if (x >= restartBtn.x && x <= restartBtn.x + restartBtn.w &&
         y >= restartBtn.y && y <= restartBtn.y + restartBtn.h) {
       restartGame();
     } else if (x >= gallBtn.x && x <= gallBtn.x + gallBtn.w &&
