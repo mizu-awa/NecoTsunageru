@@ -22,7 +22,8 @@
     "straight": 15,
     "elbow": 25,
     "tee": 15,
-    "cross": 5
+    "cross": 5,
+    "bomb": 5
   },
   "blocks": [
     { "id": 0,  "sides": [0,0,0,3], "category": "head",     "image": "img/0003_head.png" },
@@ -53,6 +54,7 @@
     { "id": 25, "sides": [3,2,3,2], "category": "cross",    "image": "img/3232_cross.png" },
     { "id": 26, "sides": [4,3,1,2], "category": "cross",    "image": "img/4312_cross.png" },
     { "id": 27, "sides": [4,4,3,2], "category": "cross",    "image": "img/4432_cross.png" },
-    { "id": 28, "sides": [4,4,4,4], "category": "cross",    "image": "img/4444_cross.png" }
+    { "id": 28, "sides": [4,4,4,4], "category": "cross",    "image": "img/4444_cross.png" },
+    { "id": 29, "sides": [0,0,0,0], "category": "bomb" }
   ]
 }

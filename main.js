@@ -162,6 +162,7 @@ const TYPE_COLORS = {
   elbow:    "#42a5f5",
   tee:      "#ab47bc",
   cross:    "#ef5350",
+  bomb:     "#e53935",
 };
 
 // === Canvas ===
@@ -264,13 +265,33 @@ function rotateCurrentBlock() {
 /** ブロックを固定して盤面に配置 */
 function lockCurrentBlock() {
   const { block, row, col } = game.current;
-  game.board[row][col] = block;
   game.current = null;
+
+  if (block.type === "bomb") {
+    explodeBomb(row, col);
+    return;
+  }
+
+  game.board[row][col] = block;
 
   // 完成判定 → 消去 → 落下 → 連鎖チェック
   processCompletions();
 
   // 死にブロック判定
+  markDeadBlocks();
+}
+
+/** 爆弾が着地: 上下左右1マスを消去 → 落下 → 完成判定 */
+function explodeBomb(row, col) {
+  for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+    const nr = row + dr;
+    const nc = col + dc;
+    if (nr >= 0 && nr < BOARD_ROWS && nc >= 0 && nc < BOARD_COLS) {
+      game.board[nr][nc] = null;
+    }
+  }
+  applyGravity();
+  processCompletions();
   markDeadBlocks();
 }
 
@@ -587,6 +608,23 @@ function drawBlockAt(block, x, y, w, h, padding) {
     if (block.dead) ctx.globalAlpha *= 0.4;
     ctx.drawImage(img, -w / 2, -h / 2, w, h);
     ctx.restore();
+  } else if (block.type === "bomb") {
+    // 爆弾の描画
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const r = Math.min(bw, bh) / 2;
+    ctx.fillStyle = "#e53935";
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    // バツ印
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = Math.max(2, r * 0.3);
+    ctx.lineCap = "round";
+    const d = r * 0.55;
+    ctx.beginPath(); ctx.moveTo(cx - d, cy - d); ctx.lineTo(cx + d, cy + d); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + d, cy - d); ctx.lineTo(cx - d, cy + d); ctx.stroke();
+    ctx.lineCap = "butt";
   } else {
     // フォールバック: 色ブロック描画
     ctx.fillStyle = block.dead ? "#b0b0b0" : (TYPE_COLORS[block.type] || "#ccc");
