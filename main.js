@@ -205,6 +205,7 @@ const game = {
   fastDrop: false,   // 高速落下中フラグ
   completedCats: [], // 完成した猫の履歴
   catCount: 0,       // 完成した猫の数
+  catPopups: [],     // 完成演出ポップアップ [ { blocks, timer, duration } ]
 };
 
 // === ブロック操作 ===
@@ -302,6 +303,15 @@ function processCompletions() {
     for (const cat of cats) {
       game.catCount++;
       game.score += cat.blocks.length * 10;
+
+      // 演出用: 盤面から消す前にブロックデータをコピー
+      const popupBlocks = cat.blocks.map(pos => ({
+        row: pos.row,
+        col: pos.col,
+        block: { ...game.board[pos.row][pos.col] },
+      }));
+      game.catPopups.push({ blocks: popupBlocks, timer: 0, duration: 2.5 });
+
       // 盤面から消去
       for (const pos of cat.blocks) {
         game.board[pos.row][pos.col] = null;
@@ -430,6 +440,14 @@ function gameLoop(timestamp) {
 }
 
 function update(dt) {
+  // ポップアップタイマー更新（state問わず動かす）
+  for (let i = game.catPopups.length - 1; i >= 0; i--) {
+    game.catPopups[i].timer += dt;
+    if (game.catPopups[i].timer >= game.catPopups[i].duration) {
+      game.catPopups.splice(i, 1);
+    }
+  }
+
   if (game.state !== "playing") return;
 
   // ブロックが無ければ新しく生成
@@ -469,6 +487,8 @@ function draw() {
   if (game.state === "gameover") {
     drawGameOver();
   }
+
+  drawCatPopups();
 }
 
 function getCellSize() {
@@ -643,6 +663,90 @@ function drawGameOver() {
   ctx.textBaseline = "alphabetic";
 }
 
+/** 完成ねこのポップアップ演出を描画 */
+function drawCatPopups() {
+  if (game.catPopups.length === 0) return;
+
+  // 複数ある場合は最新のものだけ表示
+  const popup = game.catPopups[game.catPopups.length - 1];
+  const { blocks, timer, duration } = popup;
+
+  // フェード計算: 0〜0.3秒でフェードイン、2.0〜2.5秒でフェードアウト
+  let alpha;
+  if (timer < 0.3) {
+    alpha = timer / 0.3;
+  } else if (timer > 2.0) {
+    alpha = 1 - (timer - 2.0) / (duration - 2.0);
+  } else {
+    alpha = 1;
+  }
+  alpha = Math.max(0, Math.min(1, alpha));
+
+  // ブロック群の範囲を計算
+  const rows = blocks.map(b => b.row);
+  const cols = blocks.map(b => b.col);
+  const minRow = Math.min(...rows);
+  const maxRow = Math.max(...rows);
+  const minCol = Math.min(...cols);
+  const maxCol = Math.max(...cols);
+  const catW = maxCol - minCol + 1;
+  const catH = maxRow - minRow + 1;
+
+  // ポップアップのセルサイズ（盤面セルの1.8倍、ただし画面に収まるよう制限）
+  const { w: cellW, h: cellH } = getCellSize();
+  const scale = Math.min(
+    (canvasCssW * 0.7) / (catW * cellW),
+    (canvasCssH * 0.6) / (catH * cellH),
+    1.8
+  );
+  const popCellW = cellW * scale;
+  const popCellH = cellH * scale;
+
+  const totalW = catW * popCellW;
+  const totalH = catH * popCellH;
+  const originX = (canvasCssW - totalW) / 2;
+  const originY = (canvasCssH - totalH) / 2;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // 背景（角丸の薄い白）
+  const pad = 16;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
+  roundRect(ctx, originX - pad, originY - pad, totalW + pad * 2, totalH + pad * 2, 12);
+  ctx.fill();
+
+  // 枠線
+  ctx.strokeStyle = "rgba(180, 160, 140, 0.7)";
+  ctx.lineWidth = 2;
+  roundRect(ctx, originX - pad, originY - pad, totalW + pad * 2, totalH + pad * 2, 12);
+  ctx.stroke();
+
+  // ブロック描画
+  for (const { row, col, block } of blocks) {
+    const x = originX + (col - minCol) * popCellW;
+    const y = originY + (row - minRow) * popCellH;
+    drawBlockAt(block, x, y, popCellW, popCellH, 2);
+  }
+
+  ctx.restore();
+}
+
+/** 角丸矩形パスを作成 */
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
 function drawDebugInfo() {
   ctx.fillStyle = "#aaa";
   ctx.font = "12px monospace";
@@ -762,6 +866,7 @@ function restartGame() {
   game.fallTimer = 0;
   game.fastDrop = false;
   game.completedCats = [];
+  game.catPopups = [];
   updateScoreDisplay();
 }
 
