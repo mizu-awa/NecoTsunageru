@@ -162,17 +162,11 @@ function resizeCanvas() {
   const containerH = window.innerHeight;
   const dpr = window.devicePixelRatio || 1;
 
-  let canvasW, canvasH;
-  if (containerW / containerH < ASPECT_W / ASPECT_H) {
-    canvasW = containerW;
-    canvasH = containerW * (ASPECT_H / ASPECT_W);
-  } else {
-    canvasH = containerH;
-    canvasW = containerH * (ASPECT_W / ASPECT_H);
-  }
+  // セルが正方形になるようにcell sizeを決める
+  const cellSize = Math.floor(Math.min(containerW / BOARD_COLS, containerH / BOARD_ROWS));
 
-  canvasCssW = Math.floor(canvasW);
-  canvasCssH = Math.floor(canvasH);
+  canvasCssW = cellSize * BOARD_COLS;
+  canvasCssH = cellSize * BOARD_ROWS;
 
   canvas.width = canvasCssW * dpr;
   canvas.height = canvasCssH * dpr;
@@ -180,7 +174,8 @@ function resizeCanvas() {
   canvas.style.height = canvasCssH + "px";
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 }
 
 // === 盤面 ===
@@ -528,12 +523,12 @@ function drawBlockAt(block, x, y, w, h, padding) {
   const img = (block.defId != null) ? BLOCK_IMAGES[block.defId] : null;
 
   if (img && img.complete && img.naturalWidth > 0) {
-    // 回転を適用して画像を描画
+    // 画像はセル全体に描画（paddingなし）でぴったり接続
     ctx.save();
     ctx.translate(x + w / 2, y + h / 2);
     ctx.rotate((block.rotation || 0) * Math.PI / 2);
     if (block.dead) ctx.globalAlpha *= 0.4;
-    ctx.drawImage(img, -bw / 2, -bh / 2, bw, bh);
+    ctx.drawImage(img, -w / 2, -h / 2, w, h);
     ctx.restore();
   } else {
     // フォールバック: 色ブロック描画
