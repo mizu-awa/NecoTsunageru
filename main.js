@@ -215,6 +215,8 @@ const game = {
   completedCats: [], // 完成した猫の履歴
   catCount: 0,       // 完成した猫の数
   catPopups: [],     // 完成演出ポップアップ [ { blocks, timer, duration } ]
+  bombEffect: null,  // 爆発エフェクト { cells, row, col, timer, duration }
+  fallingAnim: null, // 落下アニメーション { cells, progress, duration, onComplete }
 };
 
 // === ブロック操作 ===
@@ -274,15 +276,25 @@ function lockCurrentBlock() {
 
   game.board[row][col] = block;
 
-  // 完成判定 → 消去 → 落下 → 連鎖チェック
+  // 完成判定 → 消去 → 落下アニメーション → 連鎖チェック → 死にブロック判定
   processCompletions();
-
-  // 死にブロック判定
-  markDeadBlocks();
 }
 
-/** 爆弾が着地: 上下左右1マスを消去 → 落下 → 完成判定 */
+/** 爆弾が着地: 周辺ブロックをエフェクト後に消去 */
 function explodeBomb(row, col) {
+  const cells = [];
+  for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+    const nr = row + dr;
+    const nc = col + dc;
+    if (nr >= 0 && nr < BOARD_ROWS && nc >= 0 && nc < BOARD_COLS && game.board[nr][nc] !== null) {
+      cells.push({ nr, nc });
+    }
+  }
+  game.bombEffect = { cells, row, col, timer: 0, duration: 0.45 };
+}
+
+/** 爆発エフェクト終了時に実際の消去処理を実行 */
+function finishBombExplosion(row, col) {
   for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
     const nr = row + dr;
     const nc = col + dc;
@@ -290,9 +302,9 @@ function explodeBomb(row, col) {
       game.board[nr][nc] = null;
     }
   }
-  applyGravity();
-  processCompletions();
-  markDeadBlocks();
+  applyGravityAnimated(() => {
+    processCompletions();
+  });
 }
 
 // === 死にブロック判定 ===
@@ -393,11 +405,13 @@ function processCompletions() {
     }
     updateScoreDisplay();
 
-    // 消去後に落下処理
-    applyGravity();
-
-    // 連鎖チェック（再帰）
-    processCompletions();
+    // 消去後に落下アニメーション → 完了後に連鎖チェック
+    applyGravityAnimated(() => {
+      processCompletions();
+    });
+  } else {
+    // 猫なし → 死にブロック判定で終了
+    markDeadBlocks();
   }
 }
 
@@ -482,7 +496,7 @@ function findCompletedCats() {
   return cats;
 }
 
-/** 消去後にブロックを落下させる */
+/** 消去後にブロックを落下させる（即時） */
 function applyGravity() {
   for (let c = 0; c < BOARD_COLS; c++) {
     let writeRow = BOARD_ROWS - 1;
@@ -496,6 +510,31 @@ function applyGravity() {
       }
     }
   }
+}
+
+/** 落下アニメーション付きapplyGravity。完了後にonCompleteを呼ぶ */
+function applyGravityAnimated(onComplete) {
+  const movingCells = [];
+  for (let c = 0; c < BOARD_COLS; c++) {
+    let writeRow = BOARD_ROWS - 1;
+    for (let r = BOARD_ROWS - 1; r >= 0; r--) {
+      if (game.board[r][c] !== null) {
+        if (r !== writeRow) {
+          movingCells.push({ block: game.board[r][c], col: c, fromRow: r, toRow: writeRow });
+        }
+        writeRow--;
+      }
+    }
+  }
+
+  applyGravity(); // boardを即時更新
+
+  if (movingCells.length === 0) {
+    onComplete();
+    return;
+  }
+
+  game.fallingAnim = { cells: movingCells, progress: 0, duration: 0.22, onComplete };
 }
 
 // === ゲームループ ===
@@ -522,6 +561,28 @@ function update(dt) {
   }
 
   if (game.state !== "playing") return;
+
+  // 爆発エフェクト処理（エフェクト中は通常処理をスキップ）
+  if (game.bombEffect) {
+    game.bombEffect.timer += dt;
+    if (game.bombEffect.timer >= game.bombEffect.duration) {
+      const { row, col } = game.bombEffect;
+      game.bombEffect = null;
+      finishBombExplosion(row, col);
+    }
+    return;
+  }
+
+  // 落下アニメーション処理（アニメーション中は通常処理をスキップ）
+  if (game.fallingAnim) {
+    game.fallingAnim.progress += dt;
+    if (game.fallingAnim.progress >= game.fallingAnim.duration) {
+      const { onComplete } = game.fallingAnim;
+      game.fallingAnim = null;
+      onComplete();
+    }
+    return;
+  }
 
   // ブロックが無ければ新しく生成
   if (!game.current) {
@@ -553,6 +614,8 @@ function draw() {
 
   drawGridLines();
   drawBoard();
+  drawFallingAnim();
+  if (game.bombEffect) drawBombEffect();
   drawCurrentBlock();
   drawNextBlocks();
   drawDebugInfo();
@@ -666,12 +729,46 @@ function drawBlockAt(block, x, y, w, h, padding) {
 /** 盤面上のブロックを描画 */
 function drawBoard() {
   const { w, h } = getCellSize();
+  // アニメーション中のセル（最終位置）はスキップ
+  const animSet = new Set();
+  if (game.fallingAnim) {
+    for (const cell of game.fallingAnim.cells) {
+      animSet.add(`${cell.toRow},${cell.col}`);
+    }
+  }
   for (let r = 0; r < BOARD_ROWS; r++) {
     for (let c = 0; c < BOARD_COLS; c++) {
+      if (animSet.has(`${r},${c}`)) continue;
       const block = game.board[r][c];
       if (!block) continue;
       drawBlockAt(block, c * w, r * h, w, h, 2);
     }
+  }
+}
+
+/** 落下アニメーション中のブロックを補間位置で描画 */
+function drawFallingAnim() {
+  if (!game.fallingAnim) return;
+  const { cells, progress, duration } = game.fallingAnim;
+  const { w, h } = getCellSize();
+  const t = Math.min(progress / duration, 1.0);
+  // ease-out quad: 最初速く→最後ゆっくり
+  const eased = 1 - (1 - t) * (1 - t);
+  for (const { block, col, fromRow, toRow } of cells) {
+    const curRow = fromRow + (toRow - fromRow) * eased;
+    drawBlockAt(block, col * w, curRow * h, w, h, 2);
+  }
+}
+
+/** 爆発エフェクト: 消去対象ブロックを赤くフラッシュ */
+function drawBombEffect() {
+  const { cells, timer, duration } = game.bombEffect;
+  const { w, h } = getCellSize();
+  // sin波で明滅（高速点滅）
+  const flash = 0.5 + 0.5 * Math.sin(timer * Math.PI * 12);
+  ctx.fillStyle = `rgba(255, 60, 60, ${0.5 + 0.4 * flash})`;
+  for (const { nr, nc } of cells) {
+    ctx.fillRect(nc * w, nr * h, w, h);
   }
 }
 
@@ -680,6 +777,11 @@ function drawCurrentBlock() {
   if (!game.current) return;
   const { w, h } = getCellSize();
   const { block, row, col } = game.current;
+
+  // マス間の補間（線形落下アニメーション）
+  // 次のマスに進めない場合（着地直前）はoffsetなし
+  const interval = game.fastDrop ? FAST_FALL_INTERVAL : FALL_INTERVAL;
+  const rowOffset = canPlaceAt(row + 1, col) ? Math.min(game.fallTimer / interval, 1.0) : 0;
 
   // ゴースト（着地位置のプレビュー）
   let ghostRow = row;
@@ -690,8 +792,8 @@ function drawCurrentBlock() {
     ctx.globalAlpha = 1.0;
   }
 
-  // 現在位置
-  drawBlockAt(block, col * w, row * h, w, h, 2);
+  // 現在位置（補間で滑らかに落下）
+  drawBlockAt(block, col * w, (row + rowOffset) * h, w, h, 2);
 }
 
 /** ネクスト表示（Canvas上にオーバーレイ） */
@@ -874,7 +976,11 @@ document.addEventListener("keydown", (e) => {
       e.preventDefault();
       break;
     case "ArrowDown":
-      game.fastDrop = true;
+      if (!game.fastDrop) {
+        game.fastDrop = true;
+        // タイマーをインターバル比でスケール → 視覚位置を保ったまま高速落下へ移行
+        game.fallTimer = game.fallTimer * (FAST_FALL_INTERVAL / FALL_INTERVAL);
+      }
       e.preventDefault();
       break;
   }
@@ -882,6 +988,10 @@ document.addEventListener("keydown", (e) => {
 
 document.addEventListener("keyup", (e) => {
   if (e.key === "ArrowDown") {
+    if (game.fastDrop) {
+      // fastDrop中のfallTimerをFALL_INTERVALスケールに戻す（ビジュアル位置を保持）
+      game.fallTimer = game.fallTimer * (FALL_INTERVAL / FAST_FALL_INTERVAL);
+    }
     game.fastDrop = false;
   }
 });
@@ -911,6 +1021,7 @@ canvas.addEventListener("touchstart", (e) => {
   clearTimeout(longPressTimer);
   longPressTimer = setTimeout(() => {
     game.fastDrop = true;
+    game.fallTimer = 0;
   }, 300);
 }, { passive: false });
 
@@ -957,6 +1068,8 @@ function restartGame() {
   game.fastDrop = false;
   game.completedCats = [];
   game.catPopups = [];
+  game.bombEffect = null;
+  game.fallingAnim = null;
   updateScoreDisplay();
 }
 
