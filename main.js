@@ -204,7 +204,7 @@ function createBoard() {
 // === ゲーム状態 ===
 const game = {
   running: true,
-  state: "title", // "title" | "playing" | "gameover"
+  state: "title", // "title" | "playing" | "result"
   lastTime: 0,
   score: 0,
   board: createBoard(),
@@ -222,6 +222,9 @@ const game = {
   comboCount: 0,     // 連鎖カウンター（ブロック着地ごとにリセット）
   comboPopups: [],   // コンボ表示 [ { count, timer, duration } ]
   simPopups: [],     // 同時消し表示 [ { count, timer, duration } ]
+  sessionCats: [],   // 今セッションの完成猫（galleryレコード形式）
+  resultCatIdx: 0,   // リザルト画面: 現在表示中の猫インデックス
+  resultCatTimer: 0, // リザルト画面: 現在猫の表示タイマー
 };
 
 // === ブロック操作 ===
@@ -242,9 +245,11 @@ function spawnBlock() {
   const block = game.nextQueue.shift();
   game.nextQueue.push(generateBlock());
 
-  // 出現位置がすでに塞がれていたらゲームオーバー
+  // 出現位置がすでに塞がれていたらリザルト画面へ
   if (!canPlaceAt(SPAWN_ROW, SPAWN_COL)) {
-    game.state = "gameover";
+    game.state = "result";
+    game.resultCatIdx = 0;
+    game.resultCatTimer = 0;
     return;
   }
 
@@ -613,6 +618,11 @@ function update(dt) {
     return;
   }
 
+  if (game.state === "result") {
+    updateResult(dt);
+    return;
+  }
+
   if (game.state !== "playing") return;
 
   // 爆発エフェクト処理（エフェクト中は通常処理をスキップ）
@@ -675,6 +685,10 @@ function draw() {
     drawGallery();
     return;
   }
+  if (game.state === "result") {
+    drawResult();
+    return;
+  }
   ctx.clearRect(0, 0, canvasCssW, canvasCssH);
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, canvasCssW, canvasCssH);
@@ -685,10 +699,6 @@ function draw() {
   if (game.bombEffect) drawBombEffect();
   drawCurrentBlock();
   drawNextBlocks();
-
-  if (game.state === "gameover") {
-    drawGameOver();
-  }
 
   if (game.state === "title") {
     drawTitleScreen();
@@ -963,6 +973,122 @@ function drawGameOver() {
   ctx.fill();
   ctx.font = `bold ${Math.round(gallBtn.h * 0.42)}px sans-serif`;
   ctx.fillStyle = "#fff";
+  ctx.fillText("ギャラリーを見る", canvasCssW / 2, gallBtn.y + gallBtn.h / 2);
+
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+
+// === リザルト画面 ===
+
+function getResultBtnRect(which) {
+  const btnW = canvasCssW * 0.68;
+  const btnH = Math.max(40, canvasCssH * 0.065);
+  const btnX = (canvasCssW - btnW) / 2;
+  if (which === "restart") return { x: btnX, y: canvasCssH * 0.845, w: btnW, h: btnH };
+  if (which === "gallery") return { x: btnX, y: canvasCssH * 0.925, w: btnW, h: btnH };
+}
+
+function updateResult(dt) {
+  game.resultCatTimer += dt;
+  const AUTO_ADVANCE = 2.5;
+  if (game.sessionCats.length > 0 && game.resultCatIdx < game.sessionCats.length - 1) {
+    if (game.resultCatTimer >= AUTO_ADVANCE) {
+      game.resultCatIdx++;
+      game.resultCatTimer = 0;
+    }
+  }
+}
+
+function drawResult() {
+  ctx.fillStyle = "#fff8f2";
+  ctx.fillRect(0, 0, canvasCssW, canvasCssH);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // タイトル
+  ctx.fillStyle = "#5d4037";
+  ctx.font = `bold ${canvasCssW * 0.1}px sans-serif`;
+  ctx.fillText("ねこづまり！", canvasCssW / 2, canvasCssH * 0.08);
+
+  const cats = game.sessionCats;
+
+  if (cats.length === 0) {
+    // 猫なし
+    ctx.fillStyle = "#a1887f";
+    ctx.font = `${canvasCssW * 0.045}px sans-serif`;
+    ctx.fillText("今回は猫が完成しませんでした", canvasCssW / 2, canvasCssH * 0.38);
+  } else {
+    // ズームアニメーション（新しい猫に切り替わったとき 0→1 でスケール）
+    const ZOOM_DUR = 0.35;
+    const t = Math.min(game.resultCatTimer / ZOOM_DUR, 1.0);
+    const scale = 1 - Math.pow(1 - t, 3); // ease-out cubic
+
+    const cat = cats[game.resultCatIdx];
+    const catAreaX = canvasCssW * 0.05;
+    const catAreaY = canvasCssH * 0.13;
+    const catAreaW = canvasCssW * 0.90;
+    const catAreaH = canvasCssH * 0.46;
+    drawCatThumbnail(cat, catAreaX, catAreaY, catAreaW, catAreaH, scale);
+
+    // ページネーション（複数猫のときのみ）
+    if (cats.length > 1) {
+      const dotR = Math.max(4, canvasCssW * 0.018);
+      const dotSpacing = dotR * 3.2;
+      const totalDotsW = (cats.length - 1) * dotSpacing;
+      const dotY = canvasCssH * 0.617;
+      for (let i = 0; i < cats.length; i++) {
+        const dotX = canvasCssW / 2 - totalDotsW / 2 + i * dotSpacing;
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
+        ctx.fillStyle = i === game.resultCatIdx ? "#a1887f" : "#d7ccc8";
+        ctx.fill();
+      }
+    }
+
+    // 猫番号テキスト
+    ctx.fillStyle = "#a1887f";
+    ctx.font = `${canvasCssW * 0.038}px sans-serif`;
+    ctx.fillText(`${game.resultCatIdx + 1} / ${cats.length}`, canvasCssW / 2, canvasCssH * 0.617);
+  }
+
+  // 区切り線
+  ctx.strokeStyle = "#d7ccc8";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(canvasCssW * 0.1, canvasCssH * 0.645);
+  ctx.lineTo(canvasCssW * 0.9, canvasCssH * 0.645);
+  ctx.stroke();
+
+  // スコア
+  ctx.fillStyle = "#5d4037";
+  ctx.font = `bold ${canvasCssW * 0.072}px sans-serif`;
+  ctx.fillText(`${game.score}点`, canvasCssW / 2, canvasCssH * 0.698);
+
+  ctx.font = `${canvasCssW * 0.045}px sans-serif`;
+  ctx.fillStyle = "#6d4c41";
+  ctx.fillText(`完成した猫: ${game.catCount}匹`, canvasCssW / 2, canvasCssH * 0.754);
+
+  if (cats.length > 0) {
+    const longest = Math.max(...cats.map(c => c.blocks.length));
+    ctx.fillText(`最長の猫: ${longest}パーツ`, canvasCssW / 2, canvasCssH * 0.803);
+  }
+
+  // ボタン
+  const restartBtn = getResultBtnRect("restart");
+  ctx.fillStyle = "#a1887f";
+  roundRect(ctx, restartBtn.x, restartBtn.y, restartBtn.w, restartBtn.h, 12);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.font = `bold ${Math.round(restartBtn.h * 0.45)}px sans-serif`;
+  ctx.fillText("もう一度遊ぶ", canvasCssW / 2, restartBtn.y + restartBtn.h / 2);
+
+  const gallBtn = getResultBtnRect("gallery");
+  ctx.fillStyle = "rgba(200, 160, 100, 0.82)";
+  roundRect(ctx, gallBtn.x, gallBtn.y, gallBtn.w, gallBtn.h, 12);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.font = `bold ${Math.round(gallBtn.h * 0.45)}px sans-serif`;
   ctx.fillText("ギャラリーを見る", canvasCssW / 2, gallBtn.y + gallBtn.h / 2);
 
   ctx.textAlign = "start";
@@ -1507,6 +1633,8 @@ function saveCatRecord(popupBlocks, baseScore) {
     })),
   };
 
+  game.sessionCats.push(record);
+
   const gallery = loadGallery();
   gallery.push(record);
   try {
@@ -1536,9 +1664,21 @@ document.addEventListener("keydown", (e) => {
     }
     return;
   }
-  if (game.state === "gameover") {
+  if (game.state === "result") {
     if (e.key === " " || e.key === "Enter") {
       restartGame();
+      e.preventDefault();
+    } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      if (game.sessionCats.length > 0) {
+        game.resultCatIdx = (game.resultCatIdx + 1) % game.sessionCats.length;
+        game.resultCatTimer = 0;
+      }
+      e.preventDefault();
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      if (game.sessionCats.length > 0) {
+        game.resultCatIdx = (game.resultCatIdx - 1 + game.sessionCats.length) % game.sessionCats.length;
+        game.resultCatTimer = 0;
+      }
       e.preventDefault();
     }
     return;
@@ -1601,13 +1741,19 @@ canvas.addEventListener("touchstart", (e) => {
     return;
   }
 
-  if (game.state === "gameover") {
+  if (game.state === "result") {
     const pt = touchToCanvas(e.touches[0]);
-    const btn = getGalleryBtnRect("gameover");
-    if (pt.x >= btn.x && pt.x <= btn.x + btn.w && pt.y >= btn.y && pt.y <= btn.y + btn.h) {
-      openGallery("gameover");
-    } else {
+    const restartBtn = getResultBtnRect("restart");
+    const gallBtn = getResultBtnRect("gallery");
+    if (pt.x >= restartBtn.x && pt.x <= restartBtn.x + restartBtn.w &&
+        pt.y >= restartBtn.y && pt.y <= restartBtn.y + restartBtn.h) {
       restartGame();
+    } else if (pt.x >= gallBtn.x && pt.x <= gallBtn.x + gallBtn.w &&
+               pt.y >= gallBtn.y && pt.y <= gallBtn.y + gallBtn.h) {
+      openGallery("result");
+    } else if (game.sessionCats.length > 0) {
+      game.resultCatIdx = (game.resultCatIdx + 1) % game.sessionCats.length;
+      game.resultCatTimer = 0;
     }
     return;
   }
@@ -1690,10 +1836,18 @@ canvas.addEventListener("click", (e) => {
     }
     return;
   }
-  if (game.state === "gameover") {
-    const btn = getGalleryBtnRect("gameover");
-    if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) {
-      openGallery("gameover");
+  if (game.state === "result") {
+    const restartBtn = getResultBtnRect("restart");
+    const gallBtn = getResultBtnRect("gallery");
+    if (x >= restartBtn.x && x <= restartBtn.x + restartBtn.w &&
+        y >= restartBtn.y && y <= restartBtn.y + restartBtn.h) {
+      restartGame();
+    } else if (x >= gallBtn.x && x <= gallBtn.x + gallBtn.w &&
+               y >= gallBtn.y && y <= gallBtn.y + gallBtn.h) {
+      openGallery("result");
+    } else if (game.sessionCats.length > 0) {
+      game.resultCatIdx = (game.resultCatIdx + 1) % game.sessionCats.length;
+      game.resultCatTimer = 0;
     }
     return;
   }
@@ -1736,6 +1890,9 @@ function restartGame() {
   game.comboCount = 0;
   game.comboPopups = [];
   game.simPopups = [];
+  game.sessionCats = [];
+  game.resultCatIdx = 0;
+  game.resultCatTimer = 0;
   updateScoreDisplay();
 }
 
