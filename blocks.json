@@ -7,6 +7,24 @@
     "4": "上下足あり"
   },
   "forbiddenPairs": [],
+  "gameSettings": {
+    "_comment": "盤面・落下速度などゲームバランス設定",
+    "boardCols": 8,
+    "boardRows": 16,
+    "spawnCol": 3,
+    "spawnRow": 0,
+    "nextCount": 2,
+    "fallInterval": 1.0,
+    "fastFallInterval": 0.05
+  },
+  "timings": {
+    "_comment": "演出時間（秒）・倍率設定",
+    "bombEffectDuration": 0.45,
+    "popupDuration": 1.6,
+    "catPopupDuration": 2.5,
+    "fallAnimDuration": 0.22,
+    "simMultIncrement": 0.5
+  },
   "scoring": {
     "_comment": "スコア計算の重み設定",
     "baseMultiplier": 10,

@@ -1,15 +1,22 @@
 // ねこつなげる - main.js
 
-// === 定数 ===
+// === 定数（blocks.json の gameSettings / timings で上書き可能） ===
 const ASPECT_W = 9;
 const ASPECT_H = 16;
-const BOARD_COLS = 8;
-const BOARD_ROWS = 16;
-const SPAWN_COL = 3;
-const SPAWN_ROW = 0;
-const NEXT_COUNT = 2;
-const FALL_INTERVAL = 1.0;       // 通常落下間隔（秒）
-const FAST_FALL_INTERVAL = 0.05; // 高速落下間隔（秒）
+let BOARD_COLS         = 8;
+let BOARD_ROWS         = 16;
+let SPAWN_COL          = 3;
+let SPAWN_ROW          = 0;
+let NEXT_COUNT         = 2;
+let FALL_INTERVAL      = 1.0;    // 通常落下間隔（秒）
+let FAST_FALL_INTERVAL = 0.05;   // 高速落下間隔（秒）
+
+// 演出タイミング（秒）・倍率
+let BOMB_EFFECT_DURATION = 0.45;
+let POPUP_DURATION       = 1.6;
+let CAT_POPUP_DURATION   = 2.5;
+let FALL_ANIM_DURATION   = 0.22;
+let SIM_MULT_INCREMENT   = 0.5;
 
 // === 禁止ペア（接続不可の辺の値の組み合わせ） ===
 let FORBIDDEN_PAIRS = new Set([
@@ -73,6 +80,28 @@ let SPAWN_WEIGHT_TOTAL = 0;
 async function loadBlockDefs() {
   const res = await fetch("blocks.json");
   const data = await res.json();
+
+  // 盤面・ゲームバランス設定
+  if (data.gameSettings) {
+    const g = data.gameSettings;
+    BOARD_COLS         = g.boardCols        ?? BOARD_COLS;
+    BOARD_ROWS         = g.boardRows        ?? BOARD_ROWS;
+    SPAWN_COL          = g.spawnCol         ?? SPAWN_COL;
+    SPAWN_ROW          = g.spawnRow         ?? SPAWN_ROW;
+    NEXT_COUNT         = g.nextCount        ?? NEXT_COUNT;
+    FALL_INTERVAL      = g.fallInterval     ?? FALL_INTERVAL;
+    FAST_FALL_INTERVAL = g.fastFallInterval ?? FAST_FALL_INTERVAL;
+  }
+
+  // 演出タイミング設定
+  if (data.timings) {
+    const t = data.timings;
+    BOMB_EFFECT_DURATION = t.bombEffectDuration ?? BOMB_EFFECT_DURATION;
+    POPUP_DURATION       = t.popupDuration      ?? POPUP_DURATION;
+    CAT_POPUP_DURATION   = t.catPopupDuration   ?? CAT_POPUP_DURATION;
+    FALL_ANIM_DURATION   = t.fallAnimDuration   ?? FALL_ANIM_DURATION;
+    SIM_MULT_INCREMENT   = t.simMultIncrement   ?? SIM_MULT_INCREMENT;
+  }
 
   // 禁止ペア
   if (data.forbiddenPairs && data.forbiddenPairs.length > 0) {
@@ -301,7 +330,7 @@ function explodeBomb(row, col) {
       cells.push({ nr, nc });
     }
   }
-  game.bombEffect = { cells, row, col, timer: 0, duration: 0.45 };
+  game.bombEffect = { cells, row, col, timer: 0, duration: BOMB_EFFECT_DURATION };
 }
 
 /** 爆発エフェクト終了時に実際の消去処理を実行 */
@@ -403,16 +432,16 @@ function processCompletions() {
     if (isSimultaneous) {
       // 同時消し: 連鎖カウントを増やさず、同時消しボーナスを適用
       comboMult = Math.max(1, game.comboCount);
-      const simMult = 1 + (cats.length - 1) * 0.5; // 2匹=×1.5, 3匹=×2.0...
-      game.simPopups.push({ count: cats.length, simMult, timer: 0, duration: 1.6 });
+      const simMult = 1 + (cats.length - 1) * SIM_MULT_INCREMENT; // 2匹=×1.5, 3匹=×2.0...
+      game.simPopups.push({ count: cats.length, simMult, timer: 0, duration: POPUP_DURATION });
     } else {
       // 1匹消し: 連鎖カウント++
       game.comboCount++;
       comboMult = game.comboCount;
-      game.comboPopups.push({ count: game.comboCount, timer: 0, duration: 1.6 });
+      game.comboPopups.push({ count: game.comboCount, timer: 0, duration: POPUP_DURATION });
     }
 
-    const simultaneousMult = isSimultaneous ? 1 + (cats.length - 1) * 0.5 : 1;
+    const simultaneousMult = isSimultaneous ? 1 + (cats.length - 1) * SIM_MULT_INCREMENT : 1;
 
     for (const cat of cats) {
       game.catCount++;
@@ -425,7 +454,7 @@ function processCompletions() {
         col: pos.col,
         block: { ...game.board[pos.row][pos.col] },
       }));
-      game.catPopupQueue.push({ blocks: popupBlocks, timer: 0, duration: 2.5, baseScore }); // キューに追加
+      game.catPopupQueue.push({ blocks: popupBlocks, timer: 0, duration: CAT_POPUP_DURATION, baseScore }); // キューに追加
       saveCatRecord(popupBlocks, baseScore);
 
       // 盤面から消去
@@ -567,7 +596,7 @@ function applyGravityAnimated(onComplete) {
     return;
   }
 
-  game.fallingAnim = { cells: movingCells, progress: 0, duration: 0.22, onComplete };
+  game.fallingAnim = { cells: movingCells, progress: 0, duration: FALL_ANIM_DURATION, onComplete };
 }
 
 // === ゲームループ ===
@@ -844,7 +873,7 @@ function drawFallingAnim() {
 
 /** 爆発エフェクト: 消去対象ブロックを赤くフラッシュ */
 function drawBombEffect() {
-  const { cells, timer, duration } = game.bombEffect;
+  const { cells, timer } = game.bombEffect;
   const { w, h } = getCellSize();
   // sin波で明滅（高速点滅）
   const flash = 0.5 + 0.5 * Math.sin(timer * Math.PI * 12);
@@ -2032,9 +2061,9 @@ async function init() {
   document.title = LANG.title;
   document.documentElement.lang = LANG.htmlLang;
   document.getElementById("score-label").textContent = LANG.scoreHtml;
+  await loadBlockDefs(); // BOARD_COLS/BOARD_ROWS を確定してからリサイズ
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
-  await loadBlockDefs();
   requestAnimationFrame(gameLoop);
 }
 
