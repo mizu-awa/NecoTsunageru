@@ -45,6 +45,12 @@ const LANG = {
   galleryEmptyHint: "猫を完成させると保存されます",
   galleryDetailHint: "外をタップで閉じる",
 
+  // 操作説明
+  controlsTitle: "操作方法",
+  controlsPc: ["← → : 移動", "↑ / Space : 回転", "↓ : 加速"],
+  controlsMobile: ["スワイプ : 移動", "タップ : 回転", "長押し : 加速"],
+  controlsClose: "タップ・クリックで閉じる",
+
   // シェア
   shareImageTitle: "ねこつなげる",
   shareImageHashtag: dateStr => `${dateStr}  #ConnectingCats`,

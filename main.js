@@ -258,6 +258,7 @@ const game = {
   sessionCats: [],   // 今セッションの完成猫（galleryレコード形式）
   resultCatIdx: 0,   // リザルト画面: 現在表示中の猫インデックス
   resultCatTimer: 0, // リザルト画面: 現在猫の表示タイマー
+  controlsPopup: false, // 初回操作説明ポップアップ表示中
 };
 
 // === ブロック操作 ===
@@ -658,6 +659,7 @@ function update(dt) {
   }
 
   if (game.state !== "playing") return;
+  if (game.controlsPopup) return; // 操作説明ポップアップ中はゲーム停止
 
   // タイムアタック: カウントダウン
   if (game.mode === "timeattack") {
@@ -760,6 +762,8 @@ function draw() {
   drawComboPopups();
   drawSimPopups();
   drawScoreOverlay();
+  drawControlsOverlay();
+  if (game.controlsPopup) drawControlsPopup();
 }
 
 function drawScoreOverlay() {
@@ -1548,6 +1552,87 @@ function updateScoreDisplay() {
   if (el) el.textContent = game.score;
 }
 
+/** 初回操作説明ポップアップ（ゲーム開始時に一度だけ表示） */
+function drawControlsPopup() {
+  const isPc = window.matchMedia("(min-aspect-ratio: 10/16)").matches;
+  const lines = isPc ? LANG.controlsPc : LANG.controlsMobile;
+
+  // 暗転
+  ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+  ctx.fillRect(0, 0, canvasCssW, canvasCssH);
+
+  const titleSize = Math.round(canvasCssW * 0.07);
+  const lineSize  = Math.round(canvasCssW * 0.055);
+  const lineH     = lineSize * 1.8;
+  const hintSize  = Math.round(canvasCssW * 0.034);
+  const pad       = 24;
+  const boxW      = canvasCssW * 0.78;
+  const boxH      = pad + titleSize + 14 + lineH * lines.length + pad + hintSize + 10;
+  const boxX      = (canvasCssW - boxW) / 2;
+  const boxY      = (canvasCssH - boxH) / 2;
+
+  ctx.fillStyle = "rgba(255, 250, 240, 0.97)";
+  roundRect(ctx, boxX, boxY, boxW, boxH, 16);
+  ctx.fill();
+  ctx.strokeStyle = "#d7b8a0";
+  ctx.lineWidth = 2;
+  roundRect(ctx, boxX, boxY, boxW, boxH, 16);
+  ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+
+  // タイトル
+  ctx.fillStyle = "#5d4037";
+  ctx.font = `bold ${titleSize}px sans-serif`;
+  ctx.fillText(LANG.controlsTitle, canvasCssW / 2, boxY + pad);
+
+  // 各操作行
+  ctx.font = `${lineSize}px sans-serif`;
+  ctx.fillStyle = "#444";
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], canvasCssW / 2, boxY + pad + titleSize + 14 + i * lineH);
+  }
+
+  // 閉じるヒント
+  ctx.font = `${hintSize}px sans-serif`;
+  ctx.fillStyle = "rgba(160, 120, 80, 0.85)";
+  ctx.fillText(LANG.controlsClose, canvasCssW / 2, boxY + boxH - hintSize - 10);
+
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+
+/** スマホ（縦長）時に左下へ常時小さく表示 */
+function drawControlsOverlay() {
+  if (!window.matchMedia("(max-aspect-ratio: 10/16)").matches) return;
+  if (game.state !== "playing") return;
+
+  const lines    = LANG.controlsMobile;
+  const fontSize = Math.max(8, Math.round(canvasCssW * 0.03));
+  const lineH    = fontSize + 5;
+  const pad      = 5;
+  const boxH     = lineH * lines.length + pad * 2;
+  const boxW     = canvasCssW * 0.38;
+  const margin   = 4;
+  const boxX     = margin;
+  const boxY     = canvasCssH - boxH - margin;
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+  roundRect(ctx, boxX, boxY, boxW, boxH, 5);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(90, 70, 50, 0.65)";
+  ctx.font = `${fontSize}px sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], boxX + pad, boxY + pad + i * lineH);
+  }
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+
 /** 残り時間を mm:ss 形式に変換 */
 function formatTime(seconds) {
   const s = Math.ceil(Math.max(0, seconds));
@@ -1959,6 +2044,13 @@ document.addEventListener("keydown", (e) => {
   }
   if (game.state !== "playing") return;
 
+  if (game.controlsPopup) {
+    game.controlsPopup = false;
+    localStorage.setItem("nekotsunageru_controls_shown", "1");
+    e.preventDefault();
+    return;
+  }
+
   switch (e.key) {
     case "ArrowLeft":
       moveCurrentBlock(-1);
@@ -2003,6 +2095,12 @@ let longPressTimer = null;
 
 canvas.addEventListener("touchstart", (e) => {
   e.preventDefault();
+
+  if (game.controlsPopup) {
+    game.controlsPopup = false;
+    localStorage.setItem("nekotsunageru_controls_shown", "1");
+    return;
+  }
 
   if (game.state === "title") {
     const pt = touchToCanvas(e.touches[0]);
@@ -2111,6 +2209,11 @@ canvas.addEventListener("touchend", (e) => {
 }, { passive: false });
 
 canvas.addEventListener("click", (e) => {
+  if (game.controlsPopup) {
+    game.controlsPopup = false;
+    localStorage.setItem("nekotsunageru_controls_shown", "1");
+    return;
+  }
   const { x, y } = clickToCanvas(e);
   if (game.state === "title") {
     const gallBtn = getGalleryBtnRect("title");
@@ -2167,6 +2270,9 @@ function startGame(mode) {
   game.timeLeft = mode === "timeattack" ? TIME_ATTACK_DURATION : 0;
   game.state = "playing";
   updateTimerDisplay();
+  if (!localStorage.getItem("nekotsunageru_controls_shown")) {
+    game.controlsPopup = true;
+  }
 }
 
 function restartGame() {
@@ -2191,6 +2297,7 @@ function restartGame() {
   game.sessionCats = [];
   game.resultCatIdx = 0;
   game.resultCatTimer = 0;
+  game.controlsPopup = false;
   game.mode = mode;
   game.timeLeft = mode === "timeattack" ? TIME_ATTACK_DURATION : 0;
   updateScoreDisplay();
@@ -2204,6 +2311,10 @@ async function init() {
   document.getElementById("score-label").textContent = LANG.scoreHtml;
   const timeLabelEl = document.getElementById("time-label");
   if (timeLabelEl) timeLabelEl.textContent = LANG.timeLabel;
+  const controlsTitleEl = document.getElementById("controls-title");
+  if (controlsTitleEl) controlsTitleEl.textContent = LANG.controlsTitle;
+  const controlsHintEl = document.getElementById("controls-hint");
+  if (controlsHintEl) controlsHintEl.innerHTML = LANG.controlsPc.map(s => `<p>${s}</p>`).join("");
   await loadBlockDefs(); // BOARD_COLS/BOARD_ROWS を確定してからリサイズ
   game.board = createBoard(); // 確定後のサイズで盤面を再作成
   resizeCanvas();

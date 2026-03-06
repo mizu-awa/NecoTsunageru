@@ -9,8 +9,8 @@
   "forbiddenPairs": [],
   "gameSettings": {
     "_comment": "盤面・落下速度などゲームバランス設定",
-    "boardCols": 8,
-    "boardRows": 16,
+    "boardCols": 6,
+    "boardRows": 12,
     "spawnCol": 3,
     "spawnRow": 0,
     "nextCount": 2,

@@ -65,3 +65,13 @@ html, body {
     display: flex;
   }
 }
+
+#controls-title {
+  margin-top: 1.5rem;
+}
+
+#controls-hint p {
+  font-size: 0.82rem;
+  color: #888;
+  line-height: 2.1;
+}

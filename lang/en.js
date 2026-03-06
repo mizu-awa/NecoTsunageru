@@ -43,6 +43,12 @@ const LANG = {
   galleryEmptyHint: "Complete cats to save them here",
   galleryDetailHint: "Tap outside to close",
 
+  // Controls
+  controlsTitle: "Controls",
+  controlsPc: ["← → : Move", "↑ / Space : Rotate", "↓ : Fast Drop"],
+  controlsMobile: ["Swipe : Move", "Tap : Rotate", "Hold : Fast Drop"],
+  controlsClose: "Tap or click to close",
+
   // Share
   shareImageTitle: "ConnectingCats",
   shareImageHashtag: dateStr => `${dateStr}  #ConnectingCats`,
