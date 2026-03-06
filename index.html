@@ -19,8 +19,10 @@
     </div>
     <div id="side-right" class="side-panel"></div>
   </div>
-  <!-- 言語ファイル: ja.js または en.js に切り替える -->
-  <script src="lang/ja.js"></script>
+  <!-- 言語ファイル: ブラウザ設定に応じて自動選択 -->
+  <script>
+    document.write('<script src="lang/' + (navigator.language.startsWith('ja') ? 'ja' : 'en') + '.js"><\/script>');
+  </script>
   <script src="main.js"></script>
 </body>
 </html>
