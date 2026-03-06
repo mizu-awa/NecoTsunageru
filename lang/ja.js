@@ -29,8 +29,8 @@ const LANG = {
   noCatsResult: "今回は猫が完成しませんでした",
   scorePt: n => `${n}点`,
   longestCat: n => `最長の猫: ${n}パーツ`,
-  shareBtn: "共有する \uD83D\uDC31",
-  downloadBtn: "画像をダウンロード \uD83D\uDC31",
+  shareBtn: "共有する",
+  downloadBtn: "画像をダウンロード",
   playAgainBtn: "もう一度遊ぶ",
   galleryBtn: "ギャラリーを見る",
 

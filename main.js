@@ -1144,7 +1144,7 @@ function drawResult() {
       const dotR = Math.max(4, canvasCssW * 0.018);
       const dotSpacing = dotR * 3.2;
       const totalDotsW = (cats.length - 1) * dotSpacing;
-      const dotY = canvasCssH * 0.617;
+      const dotY = canvasCssH * 0.610;
       for (let i = 0; i < cats.length; i++) {
         const dotX = canvasCssW / 2 - totalDotsW / 2 + i * dotSpacing;
         ctx.beginPath();
@@ -1157,7 +1157,7 @@ function drawResult() {
     // 猫番号テキスト
     ctx.fillStyle = "#a1887f";
     ctx.font = `${canvasCssW * 0.038}px sans-serif`;
-    ctx.fillText(`${game.resultCatIdx + 1} / ${cats.length}`, canvasCssW / 2, canvasCssH * 0.617);
+    ctx.fillText(`${game.resultCatIdx + 1} / ${cats.length}`, canvasCssW / 2, canvasCssH * 0.632);
   }
 
   // 区切り線

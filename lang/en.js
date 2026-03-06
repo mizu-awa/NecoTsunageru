@@ -27,8 +27,8 @@ const LANG = {
   noCatsResult: "No cats were completed this time",
   scorePt: n => `${n} pts`,
   longestCat: n => `Longest: ${n} parts`,
-  shareBtn: "Share \uD83D\uDC31",
-  downloadBtn: "Download Image \uD83D\uDC31",
+  shareBtn: "Share",
+  downloadBtn: "Download Image",
   playAgainBtn: "Play Again",
   galleryBtn: "View Gallery",
 
