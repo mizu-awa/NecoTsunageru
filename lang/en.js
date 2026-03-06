@@ -7,14 +7,18 @@ const LANG = {
   // UI labels
   next: "NEXT",
   scoreHtml: "SCORE",
+  timeLabel: "TIME",
   backBtn: "\u2190 Back",
 
   // Title screen
   tagline: "Connect cat parts to make cats!",
   startHint: "Space / Tap to Start",
+  modeBtnEndless: "Endless",
+  modeBtnTimeAttack: "3-Min Attack",
 
   // Game over screen
   gameOverTitle: "Cat Jam",
+  timeUpTitle: "Time's Up!",
   scoreLabel: n => `Score: ${n}`,
   catCount: n => `Cats: ${n}`,
   restartHint: "Space / Tap to Play Again",

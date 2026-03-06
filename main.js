@@ -17,6 +17,7 @@ let POPUP_DURATION       = 1.6;
 let CAT_POPUP_DURATION   = 2.5;
 let FALL_ANIM_DURATION   = 0.22;
 let SIM_MULT_INCREMENT   = 0.5;
+let TIME_ATTACK_DURATION = 180;  // タイムアタックの制限時間（秒）
 
 // === 禁止ペア（接続不可の辺の値の組み合わせ） ===
 let FORBIDDEN_PAIRS = new Set([
@@ -89,8 +90,9 @@ async function loadBlockDefs() {
     SPAWN_COL          = g.spawnCol         ?? SPAWN_COL;
     SPAWN_ROW          = g.spawnRow         ?? SPAWN_ROW;
     NEXT_COUNT         = g.nextCount        ?? NEXT_COUNT;
-    FALL_INTERVAL      = g.fallInterval     ?? FALL_INTERVAL;
-    FAST_FALL_INTERVAL = g.fastFallInterval ?? FAST_FALL_INTERVAL;
+    FALL_INTERVAL        = g.fallInterval       ?? FALL_INTERVAL;
+    FAST_FALL_INTERVAL   = g.fastFallInterval   ?? FAST_FALL_INTERVAL;
+    TIME_ATTACK_DURATION = g.timeAttackDuration ?? TIME_ATTACK_DURATION;
   }
 
   // 演出タイミング設定
@@ -234,6 +236,8 @@ function createBoard() {
 const game = {
   running: true,
   state: "title", // "title" | "playing" | "result"
+  mode: "endless", // "endless" | "timeattack"
+  timeLeft: 0,     // タイムアタック残り時間（秒）
   lastTime: 0,
   score: 0,
   board: createBoard(),
@@ -654,6 +658,23 @@ function update(dt) {
 
   if (game.state !== "playing") return;
 
+  // タイムアタック: カウントダウン
+  if (game.mode === "timeattack") {
+    game.timeLeft -= dt;
+    updateTimerDisplay();
+    if (game.timeLeft <= 0) {
+      game.timeLeft = 0;
+      game.bombEffect = null;
+      game.fallingAnim = null;
+      game.pendingGravityCallback = null;
+      game.current = null;
+      game.state = "result";
+      game.resultCatIdx = 0;
+      game.resultCatTimer = 0;
+      return;
+    }
+  }
+
   // 爆発エフェクト処理（エフェクト中は通常処理をスキップ）
   if (game.bombEffect) {
     game.bombEffect.timer += dt;
@@ -746,8 +767,10 @@ function drawScoreOverlay() {
   const margin = 6;
   const labelSize = Math.max(10, previewSize * 0.25);
   const scoreSize = Math.max(14, previewSize * 0.5);
+  const showTimer = game.mode === "timeattack";
+  const rowH = 20 + scoreSize + margin;
   const boxW = previewSize + margin * 2;
-  const boxH = 20 + scoreSize + margin;
+  const boxH = showTimer ? rowH * 2 : rowH;
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
   ctx.fillRect(0, margin, boxW, boxH);
@@ -763,6 +786,18 @@ function drawScoreOverlay() {
   ctx.fillStyle = "#333";
   ctx.font = `bold ${scoreSize}px sans-serif`;
   ctx.fillText(game.score, boxW / 2, margin + 14 + scoreSize);
+
+  // タイムアタック: タイマー表示
+  if (showTimer) {
+    const timerY = margin + rowH;
+    ctx.fillStyle = "#888";
+    ctx.font = `bold ${labelSize}px sans-serif`;
+    ctx.fillText(LANG.timeLabel, boxW / 2, timerY + 14);
+    ctx.fillStyle = game.timeLeft <= 30 ? "#e53935" : "#333";
+    ctx.font = `bold ${scoreSize}px sans-serif`;
+    ctx.fillText(formatTime(game.timeLeft), boxW / 2, timerY + 14 + scoreSize);
+  }
+
   ctx.textAlign = "start";
 }
 
@@ -976,15 +1011,29 @@ function drawTitleScreen() {
 
   ctx.fillStyle = "#fff";
   ctx.font = `bold ${canvasCssW * 0.1}px sans-serif`;
-  ctx.fillText(LANG.title, canvasCssW / 2, canvasCssH * 0.38);
+  ctx.fillText(LANG.title, canvasCssW / 2, canvasCssH * 0.35);
 
   ctx.font = `${canvasCssW * 0.038}px sans-serif`;
   ctx.fillStyle = "#ddd";
-  ctx.fillText(LANG.tagline, canvasCssW / 2, canvasCssH * 0.52);
+  ctx.fillText(LANG.tagline, canvasCssW / 2, canvasCssH * 0.47);
 
-  ctx.font = `bold ${canvasCssW * 0.046}px sans-serif`;
-  ctx.fillStyle = "#ffe082";
-  ctx.fillText(LANG.startHint, canvasCssW / 2, canvasCssH * 0.66);
+  // モード選択ボタン
+  const modeBtns = getModeBtnRects();
+  const btnFontSize = Math.round(modeBtns.endless.h * 0.42);
+
+  ctx.fillStyle = "rgba(80, 160, 100, 0.88)";
+  roundRect(ctx, modeBtns.endless.x, modeBtns.endless.y, modeBtns.endless.w, modeBtns.endless.h, 12);
+  ctx.fill();
+  ctx.font = `bold ${btnFontSize}px sans-serif`;
+  ctx.fillStyle = "#fff";
+  ctx.fillText(LANG.modeBtnEndless, canvasCssW / 2, modeBtns.endless.y + modeBtns.endless.h / 2);
+
+  ctx.fillStyle = "rgba(80, 120, 200, 0.88)";
+  roundRect(ctx, modeBtns.timeattack.x, modeBtns.timeattack.y, modeBtns.timeattack.w, modeBtns.timeattack.h, 12);
+  ctx.fill();
+  ctx.font = `bold ${btnFontSize}px sans-serif`;
+  ctx.fillStyle = "#fff";
+  ctx.fillText(LANG.modeBtnTimeAttack, canvasCssW / 2, modeBtns.timeattack.y + modeBtns.timeattack.h / 2);
 
   // ギャラリーボタン
   const gallBtn = getGalleryBtnRect("title");
@@ -1067,7 +1116,8 @@ function drawResult() {
   // タイトル
   ctx.fillStyle = "#5d4037";
   ctx.font = `bold ${canvasCssW * 0.1}px sans-serif`;
-  ctx.fillText(LANG.gameOverTitle, canvasCssW / 2, canvasCssH * 0.08);
+  const resultTitle = game.mode === "timeattack" ? LANG.timeUpTitle : LANG.gameOverTitle;
+  ctx.fillText(resultTitle, canvasCssW / 2, canvasCssH * 0.08);
 
   const cats = game.sessionCats;
 
@@ -1487,6 +1537,39 @@ function updateScoreDisplay() {
   if (el) el.textContent = game.score;
 }
 
+/** 残り時間を mm:ss 形式に変換 */
+function formatTime(seconds) {
+  const s = Math.ceil(Math.max(0, seconds));
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${m}:${String(ss).padStart(2, "0")}`;
+}
+
+/** DOM のタイマー表示を更新（横向き／PC用） */
+function updateTimerDisplay() {
+  const labelEl = document.getElementById("time-label");
+  const displayEl = document.getElementById("time-display");
+  if (!labelEl || !displayEl) return;
+  const show = game.mode === "timeattack";
+  labelEl.style.display = show ? "" : "none";
+  displayEl.style.display = show ? "" : "none";
+  if (show) {
+    displayEl.textContent = formatTime(game.timeLeft);
+    displayEl.style.color = game.timeLeft <= 30 ? "#e53935" : "";
+  }
+}
+
+/** タイトル画面のモード選択ボタン位置を返す */
+function getModeBtnRects() {
+  const btnW = canvasCssW * 0.72;
+  const btnH = Math.max(38, canvasCssH * 0.058);
+  const btnX = (canvasCssW - btnW) / 2;
+  return {
+    endless:    { x: btnX, y: canvasCssH * 0.575, w: btnW, h: btnH },
+    timeattack: { x: btnX, y: canvasCssH * 0.665, w: btnW, h: btnH },
+  };
+}
+
 // === ギャラリー画面 ===
 const GALLERY_COLS = 3;
 const GALLERY_HEADER_H = 52;
@@ -1540,7 +1623,7 @@ function getGalleryBtnRect(state) {
   const btnW = canvasCssW * 0.55;
   const btnH = Math.max(36, canvasCssH * 0.052);
   const btnX = (canvasCssW - btnW) / 2;
-  const btnY = state === "title" ? canvasCssH * 0.77 : canvasCssH * 0.78;
+  const btnY = state === "title" ? canvasCssH * 0.785 : canvasCssH * 0.78;
   return { x: btnX, y: btnY, w: btnW, h: btnH };
 }
 
@@ -1839,7 +1922,7 @@ document.addEventListener("keydown", (e) => {
   }
   if (game.state === "title") {
     if (e.key === " " || e.key === "Enter") {
-      startGame();
+      startGame("endless"); // キーボードは無限モードでスタート
       e.preventDefault();
     }
     return;
@@ -1912,11 +1995,16 @@ canvas.addEventListener("touchstart", (e) => {
 
   if (game.state === "title") {
     const pt = touchToCanvas(e.touches[0]);
-    const btn = getGalleryBtnRect("title");
-    if (pt.x >= btn.x && pt.x <= btn.x + btn.w && pt.y >= btn.y && pt.y <= btn.y + btn.h) {
+    const gallBtn = getGalleryBtnRect("title");
+    const modeBtns = getModeBtnRects();
+    if (pt.x >= gallBtn.x && pt.x <= gallBtn.x + gallBtn.w && pt.y >= gallBtn.y && pt.y <= gallBtn.y + gallBtn.h) {
       openGallery("title");
-    } else {
-      startGame();
+    } else if (pt.x >= modeBtns.endless.x && pt.x <= modeBtns.endless.x + modeBtns.endless.w &&
+               pt.y >= modeBtns.endless.y && pt.y <= modeBtns.endless.y + modeBtns.endless.h) {
+      startGame("endless");
+    } else if (pt.x >= modeBtns.timeattack.x && pt.x <= modeBtns.timeattack.x + modeBtns.timeattack.w &&
+               pt.y >= modeBtns.timeattack.y && pt.y <= modeBtns.timeattack.y + modeBtns.timeattack.h) {
+      startGame("timeattack");
     }
     return;
   }
@@ -2014,9 +2102,16 @@ canvas.addEventListener("touchend", (e) => {
 canvas.addEventListener("click", (e) => {
   const { x, y } = clickToCanvas(e);
   if (game.state === "title") {
-    const btn = getGalleryBtnRect("title");
-    if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) {
+    const gallBtn = getGalleryBtnRect("title");
+    const modeBtns = getModeBtnRects();
+    if (x >= gallBtn.x && x <= gallBtn.x + gallBtn.w && y >= gallBtn.y && y <= gallBtn.y + gallBtn.h) {
       openGallery("title");
+    } else if (x >= modeBtns.endless.x && x <= modeBtns.endless.x + modeBtns.endless.w &&
+               y >= modeBtns.endless.y && y <= modeBtns.endless.y + modeBtns.endless.h) {
+      startGame("endless");
+    } else if (x >= modeBtns.timeattack.x && x <= modeBtns.timeattack.x + modeBtns.timeattack.w &&
+               y >= modeBtns.timeattack.y && y <= modeBtns.timeattack.y + modeBtns.timeattack.h) {
+      startGame("timeattack");
     }
     return;
   }
@@ -2056,11 +2151,15 @@ canvas.addEventListener("wheel", (e) => {
 }, { passive: false });
 
 // === スタート / リスタート ===
-function startGame() {
+function startGame(mode) {
+  game.mode = mode;
+  game.timeLeft = mode === "timeattack" ? TIME_ATTACK_DURATION : 0;
   game.state = "playing";
+  updateTimerDisplay();
 }
 
 function restartGame() {
+  const mode = game.mode; // モードを引き継ぐ
   game.state = "playing";
   game.score = 0;
   game.catCount = 0;
@@ -2081,7 +2180,10 @@ function restartGame() {
   game.sessionCats = [];
   game.resultCatIdx = 0;
   game.resultCatTimer = 0;
+  game.mode = mode;
+  game.timeLeft = mode === "timeattack" ? TIME_ATTACK_DURATION : 0;
   updateScoreDisplay();
+  updateTimerDisplay();
 }
 
 // === 初期化 ===
@@ -2089,6 +2191,8 @@ async function init() {
   document.title = LANG.title;
   document.documentElement.lang = LANG.htmlLang;
   document.getElementById("score-label").textContent = LANG.scoreHtml;
+  const timeLabelEl = document.getElementById("time-label");
+  if (timeLabelEl) timeLabelEl.textContent = LANG.timeLabel;
   await loadBlockDefs(); // BOARD_COLS/BOARD_ROWS を確定してからリサイズ
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);

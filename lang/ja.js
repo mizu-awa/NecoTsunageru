@@ -7,14 +7,20 @@ const LANG = {
   // UI ラベル
   next: "NEXT",
   scoreHtml: "SCORE",
+  timeLabel: "TIME",
   backBtn: "← 戻る",
 
   // タイトル画面
   tagline: "猫パーツをつなげて猫を完成させよう",
   startHint: "スペースキー / タップ でスタート",
 
+  // タイトル画面: モード選択
+  modeBtnEndless: "無限モード",
+  modeBtnTimeAttack: "3分タイムアタック",
+
   // ゲームオーバー画面
   gameOverTitle: "ねこづまり",
+  timeUpTitle: "タイムアップ！",
   scoreLabel: n => `スコア: ${n}`,
   catCount: n => `完成した猫: ${n}匹`,
   restartHint: "スペースキー / タップ でもう一度",
