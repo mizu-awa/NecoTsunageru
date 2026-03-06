@@ -281,6 +281,7 @@ function spawnBlock() {
   // 出現位置がすでに塞がれていたらリザルト画面へ
   if (!canPlaceAt(SPAWN_ROW, SPAWN_COL)) {
     game.state = "result";
+    game.endReason = "blocked";
     game.resultCatIdx = 0;
     game.resultCatTimer = 0;
     return;
@@ -669,6 +670,7 @@ function update(dt) {
       game.pendingGravityCallback = null;
       game.current = null;
       game.state = "result";
+      game.endReason = "timeup";
       game.resultCatIdx = 0;
       game.resultCatTimer = 0;
       return;
@@ -1116,7 +1118,7 @@ function drawResult() {
   // タイトル
   ctx.fillStyle = "#5d4037";
   ctx.font = `bold ${canvasCssW * 0.1}px sans-serif`;
-  const resultTitle = game.mode === "timeattack" ? LANG.timeUpTitle : LANG.gameOverTitle;
+  const resultTitle = game.endReason === "timeup" ? LANG.timeUpTitle : LANG.gameOverTitle;
   ctx.fillText(resultTitle, canvasCssW / 2, canvasCssH * 0.08);
 
   const cats = game.sessionCats;
