@@ -3,9 +3,9 @@
 // === 定数（blocks.json の gameSettings / timings で上書き可能） ===
 const ASPECT_W = 9;
 const ASPECT_H = 16;
-let BOARD_COLS         = 8;
-let BOARD_ROWS         = 16;
-let SPAWN_COL          = 3;
+let BOARD_COLS         = 6;
+let BOARD_ROWS         = 12;
+let SPAWN_COL          = 2;
 let SPAWN_ROW          = 0;
 let NEXT_COUNT         = 2;
 let FALL_INTERVAL      = 1.0;    // 通常落下間隔（秒）
@@ -17,7 +17,7 @@ let POPUP_DURATION       = 1.6;
 let CAT_POPUP_DURATION   = 2.5;
 let FALL_ANIM_DURATION   = 0.22;
 let SIM_MULT_INCREMENT   = 0.5;
-let TIME_ATTACK_DURATION = 180;  // タイムアタックの制限時間（秒）
+let TIME_ATTACK_DURATION = 120;  // タイムアタックの制限時間（秒）
 
 // === 禁止ペア（接続不可の辺の値の組み合わせ） ===
 let FORBIDDEN_PAIRS = new Set([
