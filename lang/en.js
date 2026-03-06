@@ -44,7 +44,7 @@ const LANG = {
   galleryDetailHint: "Tap outside to close",
 
   // Share
-  shareImageTitle: "NekoTsunageru",
+  shareImageTitle: "ConnectingCats",
   shareImageHashtag: dateStr => `${dateStr}  #ConnectingCats`,
   tweetText: (score, count) => `I scored ${score} pts and completed ${count} cats in NekoTsunageru!\n#NekoTsunageru`,
 };
