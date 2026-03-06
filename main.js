@@ -982,12 +982,12 @@ function drawGameOver() {
 // === リザルト画面 ===
 
 function getResultBtnRect(which) {
-  const btnW = canvasCssW * 0.68;
-  const btnH = Math.max(38, canvasCssH * 0.058);
+  const btnW = canvasCssW * 0.65;
+  const btnH = Math.max(34, canvasCssH * 0.05);
   const btnX = (canvasCssW - btnW) / 2;
-  if (which === "share")   return { x: btnX, y: canvasCssH * 0.815, w: btnW, h: btnH };
-  if (which === "restart") return { x: btnX, y: canvasCssH * 0.878, w: btnW, h: btnH };
-  if (which === "gallery") return { x: btnX, y: canvasCssH * 0.941, w: btnW, h: btnH };
+  if (which === "share")   return { x: btnX, y: canvasCssH * 0.800, w: btnW, h: btnH };
+  if (which === "restart") return { x: btnX, y: canvasCssH * 0.868, w: btnW, h: btnH };
+  if (which === "gallery") return { x: btnX, y: canvasCssH * 0.936, w: btnW, h: btnH };
 }
 
 function updateResult(dt) {
