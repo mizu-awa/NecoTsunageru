@@ -1179,9 +1179,11 @@ function generateShareImage(cat) {
   });
 }
 
-/** ファイル付き Web Share API が使えるか判定 */
+/** ファイル付き Web Share API が使えるか判定（モバイルのみ） */
 function canShareFiles() {
   try {
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+    if (!isMobile) return false;
     const dummy = new File([""], "test.png", { type: "image/png" });
     return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [dummy] }));
   } catch {
