@@ -736,6 +736,34 @@ function draw() {
   drawCatPopups();
   drawComboPopups();
   drawSimPopups();
+  drawScoreOverlay();
+}
+
+function drawScoreOverlay() {
+  if (!window.matchMedia("(max-aspect-ratio: 10/16)").matches) return;
+  const { w, h } = getCellSize();
+  const previewSize = Math.min(w, h) * 0.8;
+  const margin = 6;
+  const labelSize = Math.max(10, previewSize * 0.25);
+  const scoreSize = Math.max(14, previewSize * 0.5);
+  const boxW = previewSize + margin * 2;
+  const boxH = 20 + scoreSize + margin;
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.fillRect(0, margin, boxW, boxH);
+  ctx.strokeStyle = "#ccc";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0, margin, boxW, boxH);
+
+  ctx.fillStyle = "#888";
+  ctx.font = `bold ${labelSize}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText(LANG.scoreHtml, boxW / 2, margin + 14);
+
+  ctx.fillStyle = "#333";
+  ctx.font = `bold ${scoreSize}px sans-serif`;
+  ctx.fillText(game.score, boxW / 2, margin + 14 + scoreSize);
+  ctx.textAlign = "start";
 }
 
 function getCellSize() {
