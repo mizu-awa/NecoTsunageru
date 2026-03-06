@@ -898,7 +898,7 @@ function drawNextBlocks() {
   ctx.fillStyle = "#888";
   ctx.font = `bold ${Math.max(10, previewSize * 0.25)}px sans-serif`;
   ctx.textAlign = "center";
-  ctx.fillText("NEXT", startX + previewSize / 2, startY + 14);
+  ctx.fillText(LANG.next, startX + previewSize / 2, startY + 14);
   ctx.textAlign = "start";
 
   // ブロック描画
@@ -919,15 +919,15 @@ function drawTitleScreen() {
 
   ctx.fillStyle = "#fff";
   ctx.font = `bold ${canvasCssW * 0.1}px sans-serif`;
-  ctx.fillText("ねこつなげる", canvasCssW / 2, canvasCssH * 0.38);
+  ctx.fillText(LANG.title, canvasCssW / 2, canvasCssH * 0.38);
 
   ctx.font = `${canvasCssW * 0.038}px sans-serif`;
   ctx.fillStyle = "#ddd";
-  ctx.fillText("猫パーツをつなげて猫を完成させよう", canvasCssW / 2, canvasCssH * 0.52);
+  ctx.fillText(LANG.tagline, canvasCssW / 2, canvasCssH * 0.52);
 
   ctx.font = `bold ${canvasCssW * 0.046}px sans-serif`;
   ctx.fillStyle = "#ffe082";
-  ctx.fillText("スペースキー / タップ でスタート", canvasCssW / 2, canvasCssH * 0.66);
+  ctx.fillText(LANG.startHint, canvasCssW / 2, canvasCssH * 0.66);
 
   // ギャラリーボタン
   const gallBtn = getGalleryBtnRect("title");
@@ -936,7 +936,7 @@ function drawTitleScreen() {
   ctx.fill();
   ctx.font = `bold ${Math.round(gallBtn.h * 0.42)}px sans-serif`;
   ctx.fillStyle = "#fff";
-  ctx.fillText("ギャラリーを見る", canvasCssW / 2, gallBtn.y + gallBtn.h / 2);
+  ctx.fillText(LANG.galleryBtn, canvasCssW / 2, gallBtn.y + gallBtn.h / 2);
 
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
@@ -954,17 +954,17 @@ function drawGameOver() {
 
   // タイトル
   ctx.font = `bold ${canvasCssW * 0.09}px sans-serif`;
-  ctx.fillText("ねこづまり！", canvasCssW / 2, canvasCssH * 0.35);
+  ctx.fillText(LANG.gameOverTitle, canvasCssW / 2, canvasCssH * 0.35);
 
   // スコア
   ctx.font = `${canvasCssW * 0.05}px sans-serif`;
-  ctx.fillText(`スコア: ${game.score}`, canvasCssW / 2, canvasCssH * 0.48);
-  ctx.fillText(`完成した猫: ${game.catCount}匹`, canvasCssW / 2, canvasCssH * 0.55);
+  ctx.fillText(LANG.scoreLabel(game.score), canvasCssW / 2, canvasCssH * 0.48);
+  ctx.fillText(LANG.catCount(game.catCount), canvasCssW / 2, canvasCssH * 0.55);
 
   // リスタート案内
   ctx.font = `${canvasCssW * 0.035}px sans-serif`;
   ctx.fillStyle = "#ccc";
-  ctx.fillText("スペースキー / タップ でもう一度", canvasCssW / 2, canvasCssH * 0.68);
+  ctx.fillText(LANG.restartHint, canvasCssW / 2, canvasCssH * 0.68);
 
   // ギャラリーボタン
   const gallBtn = getGalleryBtnRect("gameover");
@@ -973,7 +973,7 @@ function drawGameOver() {
   ctx.fill();
   ctx.font = `bold ${Math.round(gallBtn.h * 0.42)}px sans-serif`;
   ctx.fillStyle = "#fff";
-  ctx.fillText("ギャラリーを見る", canvasCssW / 2, gallBtn.y + gallBtn.h / 2);
+  ctx.fillText(LANG.galleryBtn, canvasCssW / 2, gallBtn.y + gallBtn.h / 2);
 
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
@@ -1010,7 +1010,7 @@ function drawResult() {
   // タイトル
   ctx.fillStyle = "#5d4037";
   ctx.font = `bold ${canvasCssW * 0.1}px sans-serif`;
-  ctx.fillText("ねこづまり！", canvasCssW / 2, canvasCssH * 0.08);
+  ctx.fillText(LANG.gameOverTitle, canvasCssW / 2, canvasCssH * 0.08);
 
   const cats = game.sessionCats;
 
@@ -1018,7 +1018,7 @@ function drawResult() {
     // 猫なし
     ctx.fillStyle = "#a1887f";
     ctx.font = `${canvasCssW * 0.045}px sans-serif`;
-    ctx.fillText("今回は猫が完成しませんでした", canvasCssW / 2, canvasCssH * 0.38);
+    ctx.fillText(LANG.noCatsResult, canvasCssW / 2, canvasCssH * 0.38);
   } else {
     // ズームアニメーション（新しい猫に切り替わったとき 0→1 でスケール）
     const ZOOM_DUR = 0.35;
@@ -1064,15 +1064,15 @@ function drawResult() {
   // スコア
   ctx.fillStyle = "#5d4037";
   ctx.font = `bold ${canvasCssW * 0.072}px sans-serif`;
-  ctx.fillText(`${game.score}点`, canvasCssW / 2, canvasCssH * 0.698);
+  ctx.fillText(LANG.scorePt(game.score), canvasCssW / 2, canvasCssH * 0.698);
 
   ctx.font = `${canvasCssW * 0.045}px sans-serif`;
   ctx.fillStyle = "#6d4c41";
-  ctx.fillText(`完成した猫: ${game.catCount}匹`, canvasCssW / 2, canvasCssH * 0.754);
+  ctx.fillText(LANG.catCount(game.catCount), canvasCssW / 2, canvasCssH * 0.754);
 
   if (cats.length > 0) {
     const longest = Math.max(...cats.map(c => c.blocks.length));
-    ctx.fillText(`最長の猫: ${longest}パーツ`, canvasCssW / 2, canvasCssH * 0.803);
+    ctx.fillText(LANG.longestCat(longest), canvasCssW / 2, canvasCssH * 0.803);
   }
 
   // ボタン
@@ -1082,7 +1082,7 @@ function drawResult() {
   ctx.fill();
   ctx.fillStyle = "#fff";
   ctx.font = `bold ${Math.round(shareBtn.h * 0.45)}px sans-serif`;
-  ctx.fillText(canShareFiles() ? "共有する 🐱" : "画像をダウンロード 🐱", canvasCssW / 2, shareBtn.y + shareBtn.h / 2);
+  ctx.fillText(canShareFiles() ? LANG.shareBtn : LANG.downloadBtn, canvasCssW / 2, shareBtn.y + shareBtn.h / 2);
 
   const restartBtn = getResultBtnRect("restart");
   ctx.fillStyle = "#a1887f";
@@ -1090,7 +1090,7 @@ function drawResult() {
   ctx.fill();
   ctx.fillStyle = "#fff";
   ctx.font = `bold ${Math.round(restartBtn.h * 0.45)}px sans-serif`;
-  ctx.fillText("もう一度遊ぶ", canvasCssW / 2, restartBtn.y + restartBtn.h / 2);
+  ctx.fillText(LANG.playAgainBtn, canvasCssW / 2, restartBtn.y + restartBtn.h / 2);
 
   const gallBtn = getResultBtnRect("gallery");
   ctx.fillStyle = "rgba(200, 160, 100, 0.82)";
@@ -1098,7 +1098,7 @@ function drawResult() {
   ctx.fill();
   ctx.fillStyle = "#fff";
   ctx.font = `bold ${Math.round(gallBtn.h * 0.45)}px sans-serif`;
-  ctx.fillText("ギャラリーを見る", canvasCssW / 2, gallBtn.y + gallBtn.h / 2);
+  ctx.fillText(LANG.galleryBtn, canvasCssW / 2, gallBtn.y + gallBtn.h / 2);
 
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
@@ -1137,7 +1137,7 @@ function generateShareImage(cat) {
     // タイトル
     ctx.fillStyle = "#5d4037";
     ctx.font = `bold ${Math.round(SIZE * 0.072)}px sans-serif`;
-    ctx.fillText("ねこつなげる", SIZE / 2, SIZE * 0.075);
+    ctx.fillText(LANG.shareImageTitle, SIZE / 2, SIZE * 0.075);
 
     // 猫描画
     const catAreaSize = SIZE * 0.58;
@@ -1156,19 +1156,19 @@ function generateShareImage(cat) {
     // スコア
     ctx.fillStyle = "#5d4037";
     ctx.font = `bold ${Math.round(SIZE * 0.072)}px sans-serif`;
-    ctx.fillText(`${game.score}点`, SIZE / 2, SIZE * 0.815);
+    ctx.fillText(LANG.scorePt(game.score), SIZE / 2, SIZE * 0.815);
 
     // 完成数・最長
     ctx.fillStyle = "#8d6e63";
     ctx.font = `${Math.round(SIZE * 0.042)}px sans-serif`;
-    ctx.fillText(`完成した猫: ${game.catCount}匹`, SIZE / 2, SIZE * 0.872);
+    ctx.fillText(LANG.catCount(game.catCount), SIZE / 2, SIZE * 0.872);
 
     // 日付とハッシュタグ
     const today = new Date();
     const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
     ctx.fillStyle = "#bcaaa4";
     ctx.font = `${Math.round(SIZE * 0.036)}px sans-serif`;
-    ctx.fillText(`${dateStr}  #ねこつなげる`, SIZE / 2, SIZE * 0.94);
+    ctx.fillText(LANG.shareImageHashtag(dateStr), SIZE / 2, SIZE * 0.94);
 
     // ctx を元に戻す
     ctx = origCtx;
@@ -1198,7 +1198,7 @@ async function shareCurrentCat() {
 
   const blob = await generateShareImage(cat);
   const file = new File([blob], "nekotsunageru.png", { type: "image/png" });
-  const tweetText = `ねこつなげる で ${game.score}点！${game.catCount}匹の猫を完成させました！\n#ねこつなげる`;
+  const tweetText = LANG.tweetText(game.score, game.catCount);
 
   if (canShareFiles()) {
     // モバイル: Web Share API でファイルごと共有
@@ -1395,16 +1395,16 @@ function drawSimPopups() {
 
   ctx.fillStyle = "rgba(0,0,0,0.25)";
   ctx.font = `bold ${fontSize}px sans-serif`;
-  ctx.fillText(`${count}匹いっぺん！`, cx + 2, cy + 2);
+  ctx.fillText(LANG.simultaneous(count), cx + 2, cy + 2);
 
   ctx.fillStyle = "#43a047";
-  ctx.fillText(`${count}匹いっぺん！`, cx, cy);
+  ctx.fillText(LANG.simultaneous(count), cx, cy);
 
   // ボーナス倍率の小文字表示
   const subFontSize = Math.round(canvasCssW * 0.045);
   ctx.font = `${subFontSize}px sans-serif`;
   ctx.fillStyle = "rgba(67, 160, 71, 0.9)";
-  ctx.fillText(`×${simMult.toFixed(1)} ボーナス！`, cx, cy + fontSize * 0.8);
+  ctx.fillText(LANG.bonus(simMult.toFixed(1)), cx, cy + fontSize * 0.8);
 
   ctx.restore();
 }
@@ -1560,19 +1560,19 @@ function drawGallery() {
   ctx.font = "bold 14px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("← 戻る", 38, 26);
+  ctx.fillText(LANG.backBtn, 38, 26);
 
   // タイトル
   ctx.fillStyle = "#5d4037";
   ctx.font = `bold ${Math.round(canvasCssW * 0.052)}px sans-serif`;
   ctx.textAlign = "center";
-  ctx.fillText("ねこギャラリー", canvasCssW / 2, GALLERY_HEADER_H / 2);
+  ctx.fillText(LANG.galleryTitle, canvasCssW / 2, GALLERY_HEADER_H / 2);
 
   // 件数
   ctx.font = `${Math.round(canvasCssW * 0.033)}px sans-serif`;
   ctx.fillStyle = "#a1887f";
   ctx.textAlign = "right";
-  ctx.fillText(`${galleryState.cats.length}匹`, canvasCssW - 8, GALLERY_HEADER_H / 2);
+  ctx.fillText(LANG.galleryCatCount(galleryState.cats.length), canvasCssW - 8, GALLERY_HEADER_H / 2);
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
 
@@ -1581,9 +1581,9 @@ function drawGallery() {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = `${Math.round(canvasCssW * 0.048)}px sans-serif`;
-    ctx.fillText("まだ猫がいません", canvasCssW / 2, canvasCssH * 0.5);
+    ctx.fillText(LANG.galleryEmpty, canvasCssW / 2, canvasCssH * 0.5);
     ctx.font = `${Math.round(canvasCssW * 0.033)}px sans-serif`;
-    ctx.fillText("猫を完成させると保存されます", canvasCssW / 2, canvasCssH * 0.58);
+    ctx.fillText(LANG.galleryEmptyHint, canvasCssW / 2, canvasCssH * 0.58);
     ctx.textAlign = "start";
     ctx.textBaseline = "alphabetic";
     return;
@@ -1719,7 +1719,7 @@ function drawGalleryDetail(cat) {
   // ヒントテキスト
   ctx.font = `${Math.round(canvasCssW * 0.030)}px sans-serif`;
   ctx.fillStyle = "rgba(255,255,255,0.75)";
-  ctx.fillText("タップでぷにっ  外をタップで閉じる", canvasCssW / 2, bgY + bgH + 22);
+  ctx.fillText(LANG.galleryDetailHint, canvasCssW / 2, bgY + bgH + 22);
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
 }
@@ -2029,6 +2029,9 @@ function restartGame() {
 
 // === 初期化 ===
 async function init() {
+  document.title = LANG.title;
+  document.documentElement.lang = LANG.htmlLang;
+  document.getElementById("score-label").textContent = LANG.scoreHtml;
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
   await loadBlockDefs();

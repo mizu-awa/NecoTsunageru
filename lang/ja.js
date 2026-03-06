@@ -1,0 +1,46 @@
+// 日本語テキスト定義
+const LANG = {
+  // ページメタ
+  htmlLang: "ja",
+  title: "ねこつなげる",
+
+  // UI ラベル
+  next: "NEXT",
+  scoreHtml: "SCORE",
+  backBtn: "← 戻る",
+
+  // タイトル画面
+  tagline: "猫パーツをつなげて猫を完成させよう",
+  startHint: "スペースキー / タップ でスタート",
+
+  // ゲームオーバー画面
+  gameOverTitle: "ねこづまり",
+  scoreLabel: n => `スコア: ${n}`,
+  catCount: n => `完成した猫: ${n}匹`,
+  restartHint: "スペースキー / タップ でもう一度",
+
+  // リザルト画面
+  noCatsResult: "今回は猫が完成しませんでした",
+  scorePt: n => `${n}点`,
+  longestCat: n => `最長の猫: ${n}パーツ`,
+  shareBtn: "共有する \uD83D\uDC31",
+  downloadBtn: "画像をダウンロード \uD83D\uDC31",
+  playAgainBtn: "もう一度遊ぶ",
+  galleryBtn: "ギャラリーを見る",
+
+  // ポップアップ演出
+  simultaneous: n => `${n}匹いっぺん！`,
+  bonus: x => `×${x} ボーナス！`,
+
+  // ギャラリー画面
+  galleryTitle: "ねこギャラリー",
+  galleryCatCount: n => `${n}匹`,
+  galleryEmpty: "まだ猫がいません",
+  galleryEmptyHint: "猫を完成させると保存されます",
+  galleryDetailHint: "外をタップで閉じる",
+
+  // シェア
+  shareImageTitle: "ねこつなげる",
+  shareImageHashtag: dateStr => `${dateStr}  #ConnectingCats`,
+  tweetText: (score, count) => `ねこつなげる で ${score}点！${count}匹の猫を完成させました！\n#ConnectingCats`,
+};
