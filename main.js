@@ -1222,83 +1222,87 @@ function drawResult() {
 
 // === SNSシェア ===
 
-/** シェア用画像（正方形）を生成して Blob を返す */
+/** シェア用画像（正方形）を生成して Blob を返す（同期） */
 function generateShareImage(cat) {
-  return new Promise(resolve => {
-    const SIZE = 900;
-    const offCanvas = document.createElement("canvas");
-    offCanvas.width = SIZE;
-    offCanvas.height = SIZE;
+  const SIZE = 900;
+  const offCanvas = document.createElement("canvas");
+  offCanvas.width = SIZE;
+  offCanvas.height = SIZE;
 
-    // ctx を一時的にオフスクリーンに差し替え
-    const origCtx = ctx;
-    const origW = canvasCssW;
-    const origH = canvasCssH;
-    ctx = offCanvas.getContext("2d");
-    canvasCssW = SIZE;
-    canvasCssH = SIZE;
+  // ctx を一時的にオフスクリーンに差し替え
+  const origCtx = ctx;
+  const origW = canvasCssW;
+  const origH = canvasCssH;
+  ctx = offCanvas.getContext("2d");
+  canvasCssW = SIZE;
+  canvasCssH = SIZE;
 
-    // 背景
-    ctx.fillStyle = "#fff8f2";
-    ctx.fillRect(0, 0, SIZE, SIZE);
+  // 背景
+  ctx.fillStyle = "#fff8f2";
+  ctx.fillRect(0, 0, SIZE, SIZE);
 
-    // 枠線
-    ctx.strokeStyle = "#d7b8a0";
-    ctx.lineWidth = 10;
-    ctx.strokeRect(5, 5, SIZE - 10, SIZE - 10);
+  // 枠線
+  ctx.strokeStyle = "#d7b8a0";
+  ctx.lineWidth = 10;
+  ctx.strokeRect(5, 5, SIZE - 10, SIZE - 10);
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
 
-    // タイトル
-    ctx.fillStyle = "#5d4037";
-    ctx.font = `bold ${Math.round(SIZE * 0.072)}px sans-serif`;
-    ctx.fillText(LANG.shareImageTitle, SIZE / 2, SIZE * 0.075);
+  // タイトル
+  ctx.fillStyle = "#5d4037";
+  ctx.font = `bold ${Math.round(SIZE * 0.072)}px sans-serif`;
+  ctx.fillText(LANG.shareImageTitle, SIZE / 2, SIZE * 0.075);
 
-    // 猫描画
-    const catAreaSize = SIZE * 0.58;
-    const catAreaX = (SIZE - catAreaSize) / 2;
-    const catAreaY = SIZE * 0.115;
-    drawCatThumbnail(cat, catAreaX, catAreaY, catAreaSize, catAreaSize, 1.0);
+  // 猫描画
+  const catAreaSize = SIZE * 0.58;
+  const catAreaX = (SIZE - catAreaSize) / 2;
+  const catAreaY = SIZE * 0.115;
+  drawCatThumbnail(cat, catAreaX, catAreaY, catAreaSize, catAreaSize, 1.0);
 
-    // 区切り線
-    ctx.strokeStyle = "#d7ccc8";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(SIZE * 0.1, SIZE * 0.755);
-    ctx.lineTo(SIZE * 0.9, SIZE * 0.755);
-    ctx.stroke();
+  // 区切り線
+  ctx.strokeStyle = "#d7ccc8";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(SIZE * 0.1, SIZE * 0.755);
+  ctx.lineTo(SIZE * 0.9, SIZE * 0.755);
+  ctx.stroke();
 
-    // スコア
-    ctx.fillStyle = "#5d4037";
-    ctx.font = `bold ${Math.round(SIZE * 0.072)}px sans-serif`;
-    ctx.fillText(LANG.scorePt(game.score), SIZE / 2, SIZE * 0.815);
+  // スコア
+  ctx.fillStyle = "#5d4037";
+  ctx.font = `bold ${Math.round(SIZE * 0.072)}px sans-serif`;
+  ctx.fillText(LANG.scorePt(game.score), SIZE / 2, SIZE * 0.815);
 
-    // 完成数・最長
-    ctx.fillStyle = "#8d6e63";
-    ctx.font = `${Math.round(SIZE * 0.042)}px sans-serif`;
-    ctx.fillText(LANG.catCount(game.catCount), SIZE / 2, SIZE * 0.872);
+  // 完成数・最長
+  ctx.fillStyle = "#8d6e63";
+  ctx.font = `${Math.round(SIZE * 0.042)}px sans-serif`;
+  ctx.fillText(LANG.catCount(game.catCount), SIZE / 2, SIZE * 0.872);
 
-    // モード名
-    const modeName = game.mode === "timeattack" ? LANG.modeBtnTimeAttack : LANG.modeBtnEndless;
-    ctx.fillStyle = "#a1887f";
-    ctx.font = `${Math.round(SIZE * 0.036)}px sans-serif`;
-    ctx.fillText(modeName, SIZE / 2, SIZE * 0.912);
+  // モード名
+  const modeName = game.mode === "timeattack" ? LANG.modeBtnTimeAttack : LANG.modeBtnEndless;
+  ctx.fillStyle = "#a1887f";
+  ctx.font = `${Math.round(SIZE * 0.036)}px sans-serif`;
+  ctx.fillText(modeName, SIZE / 2, SIZE * 0.912);
 
-    // 日付とハッシュタグ
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
-    ctx.fillStyle = "#bcaaa4";
-    ctx.font = `${Math.round(SIZE * 0.036)}px sans-serif`;
-    ctx.fillText(LANG.shareImageHashtag(dateStr), SIZE / 2, SIZE * 0.953);
+  // 日付とハッシュタグ
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
+  ctx.fillStyle = "#bcaaa4";
+  ctx.font = `${Math.round(SIZE * 0.036)}px sans-serif`;
+  ctx.fillText(LANG.shareImageHashtag(dateStr), SIZE / 2, SIZE * 0.953);
 
-    // ctx を元に戻す
-    ctx = origCtx;
-    canvasCssW = origW;
-    canvasCssH = origH;
+  // ctx を元に戻す
+  ctx = origCtx;
+  canvasCssW = origW;
+  canvasCssH = origH;
 
-    offCanvas.toBlob(resolve, "image/png");
-  });
+  // toDataURL で同期的に Blob 化（Web Share API のジェスチャー制約を満たすため）
+  const dataURL = offCanvas.toDataURL("image/png");
+  const base64 = dataURL.slice(dataURL.indexOf(",") + 1);
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: "image/png" });
 }
 
 /** ファイル付き Web Share API が使えるか判定（モバイルのみ） */
@@ -1314,21 +1318,19 @@ function canShareFiles() {
 }
 
 /** 現在表示中の猫をシェア（モバイル: 共有シート / PC: ダウンロード） */
-async function shareCurrentCat() {
+function shareCurrentCat() {
   const cat = game.sessionCats[game.resultCatIdx];
   if (!cat) return;
 
-  const blob = await generateShareImage(cat);
+  const blob = generateShareImage(cat);
   const file = new File([blob], "nekotsunageru.png", { type: "image/png" });
   const tweetText = LANG.tweetText(game.score, game.catCount);
 
   if (canShareFiles()) {
-    // モバイル: Web Share API でファイルごと共有
-    try {
-      await navigator.share({ files: [file], text: tweetText });
-    } catch (e) {
+    // モバイル: Web Share API でファイルごと共有（ジェスチャー内で同期的に呼ぶ必要あり）
+    navigator.share({ files: [file], text: tweetText }).catch(e => {
       if (e.name !== "AbortError") throw e;
-    }
+    });
   } else {
     // PC: 画像をダウンロードのみ
     const url = URL.createObjectURL(blob);

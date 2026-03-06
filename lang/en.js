@@ -33,8 +33,8 @@ const LANG = {
   galleryBtn: "View Gallery",
 
   // Popup effects
-  simultaneous: n => `${n} at once!`,
-  bonus: x => `\xD7${x} Bonus!`,
+  simultaneous: n => `${n} at once`,
+  bonus: x => `\xD7${x} Bonus`,
 
   // Gallery screen
   galleryTitle: "Cat Gallery",

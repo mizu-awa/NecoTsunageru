@@ -35,8 +35,8 @@ const LANG = {
   galleryBtn: "ギャラリーを見る",
 
   // ポップアップ演出
-  simultaneous: n => `${n}匹いっぺん！`,
-  bonus: x => `×${x} ボーナス！`,
+  simultaneous: n => `${n}匹いっぺん`,
+  bonus: x => `×${x} ボーナス`,
 
   // ギャラリー画面
   galleryTitle: "ねこギャラリー",
