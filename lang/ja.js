@@ -16,7 +16,7 @@ const LANG = {
 
   // タイトル画面: モード選択
   modeBtnEndless: "無限モード",
-  modeBtnTimeAttack: "3分タイムアタック",
+  modeBtnTimeAttack: "2分タイムアタック",
 
   // ゲームオーバー画面
   gameOverTitle: "ねこづまり",

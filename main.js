@@ -2202,6 +2202,7 @@ async function init() {
   const timeLabelEl = document.getElementById("time-label");
   if (timeLabelEl) timeLabelEl.textContent = LANG.timeLabel;
   await loadBlockDefs(); // BOARD_COLS/BOARD_ROWS を確定してからリサイズ
+  game.board = createBoard(); // 確定後のサイズで盤面を再作成
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
   requestAnimationFrame(gameLoop);

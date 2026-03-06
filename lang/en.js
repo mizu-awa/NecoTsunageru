@@ -14,7 +14,7 @@ const LANG = {
   tagline: "Connect cat parts to make cats!",
   startHint: "Space / Tap to Start",
   modeBtnEndless: "Endless",
-  modeBtnTimeAttack: "3-Min Attack",
+  modeBtnTimeAttack: "2-Min Attack",
 
   // Game over screen
   gameOverTitle: "Cat Jam",
