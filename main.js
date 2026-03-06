@@ -771,7 +771,10 @@ function drawScoreOverlay() {
   const scoreSize = Math.max(14, previewSize * 0.5);
   const showTimer = game.mode === "timeattack";
   const rowH = 20 + scoreSize + margin;
-  const boxW = previewSize + margin * 2;
+  // スコアのテキスト幅を計測してボックス幅を動的に決定（右方向へ伸びる）
+  ctx.font = `bold ${scoreSize}px sans-serif`;
+  const scoreTextW = ctx.measureText(game.score).width;
+  const boxW = Math.max(previewSize + margin * 2, scoreTextW + margin * 2);
   const boxH = showTimer ? rowH * 2 : rowH;
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
