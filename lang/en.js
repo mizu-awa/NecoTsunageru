@@ -51,6 +51,6 @@ const LANG = {
 
   // Share
   shareImageTitle: "ConnectingCats",
-  shareImageHashtag: dateStr => `${dateStr}  #ConnectingCats`,
-  tweetText: (score, count) => `I scored ${score} pts and completed ${count} cats in NekoTsunageru!\n#NekoTsunageru`,
+  shareImageHashtag: dateStr => `${dateStr}  #ねこつなげる #ConnectingCats`,
+  tweetText: (score, count) => `I scored ${score} pts and completed ${count} cats in ConnectingCats!\n#ねこつなげる #ConnectingCats\nhttps://mizu-awa.itch.io/connectingcats`,
 };

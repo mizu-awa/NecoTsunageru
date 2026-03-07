@@ -1282,14 +1282,14 @@ function generateShareImage(cat) {
   const modeName = game.mode === "timeattack" ? LANG.modeBtnTimeAttack : LANG.modeBtnEndless;
   ctx.fillStyle = "#a1887f";
   ctx.font = `${Math.round(SIZE * 0.036)}px sans-serif`;
-  ctx.fillText(modeName, SIZE / 2, SIZE * 0.912);
+  ctx.fillText(modeName, SIZE / 2, SIZE * 0.924);
 
   // 日付とハッシュタグ
   const today = new Date();
   const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
   ctx.fillStyle = "#bcaaa4";
   ctx.font = `${Math.round(SIZE * 0.036)}px sans-serif`;
-  ctx.fillText(LANG.shareImageHashtag(dateStr), SIZE / 2, SIZE * 0.953);
+  ctx.fillText(LANG.shareImageHashtag(dateStr), SIZE / 2, SIZE * 0.970);
 
   // ctx を元に戻す
   ctx = origCtx;

@@ -53,6 +53,6 @@ const LANG = {
 
   // シェア
   shareImageTitle: "ねこつなげる",
-  shareImageHashtag: dateStr => `${dateStr}  #ConnectingCats`,
-  tweetText: (score, count) => `ねこつなげる で ${score}点！${count}匹の猫を完成させました！\n#ConnectingCats`,
+  shareImageHashtag: dateStr => `${dateStr}  #ねこつなげる #ConnectingCats`,
+  tweetText: (score, count) => `ねこつなげる で ${score}点！${count}匹の猫を完成させました！\n#ねこつなげる #ConnectingCats\nhttps://mizu-awa.itch.io/connectingcats`,
 };
