@@ -11,7 +11,7 @@ const LANG = {
   backBtn: "← 戻る",
 
   // タイトル画面
-  tagline: "猫パーツをつなげて猫を完成させよう",
+  tagline: "ねこパーツをつなげてねこを完成させよう",
   startHint: "スペースキー / タップ でスタート",
 
   // タイトル画面: モード選択
@@ -22,14 +22,14 @@ const LANG = {
   gameOverTitle: "ねこづまり",
   timeUpTitle: "タイムアップ！",
   scoreLabel: n => `スコア: ${n}`,
-  catCount: n => `完成した猫: ${n}匹`,
+  catCount: n => `完成したねこ: ${n}匹`,
   restartHint: "スペースキー / タップ でもう一度",
 
   // リザルト画面
-  noCatsResult: "今回は猫が完成しませんでした",
+  noCatsResult: "今回はねこが完成しませんでした",
   scorePt: n => `${n}点`,
-  catScore: n => `この猫: ${n}点`,
-  longestCat: n => `最長の猫: ${n}パーツ`,
+  catScore: n => `このねこ: ${n}点`,
+  longestCat: n => `最長のねこ: ${n}パーツ`,
   shareBtn: "共有する",
   downloadBtn: "画像をダウンロード",
   playAgainBtn: "もう一度遊ぶ",
@@ -42,8 +42,8 @@ const LANG = {
   // ギャラリー画面
   galleryTitle: "ねこギャラリー",
   galleryCatCount: n => `${n}匹`,
-  galleryEmpty: "まだ猫がいません",
-  galleryEmptyHint: "猫を完成させると保存されます",
+  galleryEmpty: "まだねこがいません",
+  galleryEmptyHint: "ねこを完成させると保存されます",
   galleryDetailHint: "外をタップで閉じる",
 
   // 操作説明
@@ -55,5 +55,5 @@ const LANG = {
   // シェア
   shareImageTitle: "ねこつなげる",
   shareImageHashtag: dateStr => `${dateStr}  #ねこつなげる #ConnectingCats`,
-  tweetText: (score, count) => `ねこつなげる で ${score}点！${count}匹の猫を完成させました！\n#ねこつなげる #ConnectingCats\nhttps://mizu-awa.itch.io/connectingcats`,
+  tweetText: (score, count) => `ねこつなげる で ${score}点！${count}匹のねこを完成させました！\n#ねこつなげる #ConnectingCats\nhttps://mizu-awa.itch.io/connectingcats`,
 };

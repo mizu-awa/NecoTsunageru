@@ -245,8 +245,8 @@ const game = {
   nextQueue: [],     // 次のブロック配列
   fallTimer: 0,      // 落下タイマー
   fastDrop: false,   // 高速落下中フラグ
-  completedCats: [], // 完成した猫の履歴
-  catCount: 0,       // 完成した猫の数
+  completedCats: [], // 完成したねこの履歴
+  catCount: 0,       // 完成したねこの数
   catPopups: [],     // 現在表示中のポップアップ（0か1つ）
   catPopupQueue: [], // 表示待ちポップアップ（順番待ち）
   bombEffect: null,  // 爆発エフェクト { cells, row, col, timer, duration }
@@ -255,9 +255,9 @@ const game = {
   comboCount: 0,     // 連鎖カウンター（ブロック着地ごとにリセット）
   comboPopups: [],   // コンボ表示 [ { count, timer, duration } ]
   simPopups: [],     // 同時消し表示 [ { count, timer, duration } ]
-  sessionCats: [],   // 今セッションの完成猫（galleryレコード形式）
-  resultCatIdx: 0,   // リザルト画面: 現在表示中の猫インデックス
-  resultCatTimer: 0, // リザルト画面: 現在猫の表示タイマー
+  sessionCats: [],   // 今セッションの完成ねこ（galleryレコード形式）
+  resultCatIdx: 0,   // リザルト画面: 現在表示中のねこインデックス
+  resultCatTimer: 0, // リザルト画面: 現在ねこの表示タイマー
   controlsPopup: false, // 初回操作説明ポップアップ表示中
 };
 
@@ -428,7 +428,7 @@ function calculateCatScore(cat) {
   return Math.round(base * mult) + perfectJoints * SCORE_CONFIG.perfectJointBonus;
 }
 
-/** 完成猫を探して消去。連鎖も処理する */
+/** 完成ねこを探して消去。連鎖も処理する */
 function processCompletions() {
   const cats = findCompletedCats();
   if (cats.length > 0) {
@@ -478,12 +478,12 @@ function processCompletions() {
       });
     };
   } else {
-    // 猫なし → 死にブロック判定で終了
+    // ねこなし → 死にブロック判定で終了
     markDeadBlocks();
   }
 }
 
-/** 盤面上の全完成猫を探索
+/** 盤面上の全完成ねこを探索
  *  完成条件: 連結成分の全ブロックの非ゼロ接続面が
  *  空きマスにも壁（盤面外）にも面していないこと。
  *  つまり全ての接続面が他ブロック（互換・非互換問わず）で塞がれている状態。
@@ -1131,12 +1131,12 @@ function drawResult() {
   const cats = game.sessionCats;
 
   if (cats.length === 0) {
-    // 猫なし
+    // ねこなし
     ctx.fillStyle = "#a1887f";
     ctx.font = `${canvasCssW * 0.045}px sans-serif`;
     ctx.fillText(LANG.noCatsResult, canvasCssW / 2, canvasCssH * 0.38);
   } else {
-    // ズームアニメーション（新しい猫に切り替わったとき 0→1 でスケール）
+    // ズームアニメーション（新しいねこに切り替わったとき 0→1 でスケール）
     const ZOOM_DUR = 0.35;
     const t = Math.min(game.resultCatTimer / ZOOM_DUR, 1.0);
     const scale = 1 - Math.pow(1 - t, 3); // ease-out cubic
@@ -1148,7 +1148,7 @@ function drawResult() {
     const catAreaH = canvasCssH * 0.46;
     drawCatThumbnail(cat, catAreaX, catAreaY, catAreaW, catAreaH, scale);
 
-    // ページネーション（複数猫のときのみ）
+    // ページネーション（複数ねこのときのみ）
     if (cats.length > 1) {
       const dotR = Math.max(4, canvasCssW * 0.018);
       const dotSpacing = dotR * 3.2;
@@ -1163,12 +1163,12 @@ function drawResult() {
       }
     }
 
-    // 猫番号テキスト
+    // ねこ番号テキスト
     ctx.fillStyle = "#a1887f";
     ctx.font = `${canvasCssW * 0.038}px sans-serif`;
     ctx.fillText(`${game.resultCatIdx + 1} / ${cats.length}`, canvasCssW / 2, canvasCssH * 0.627);
 
-    // 猫単体の得点
+    // ねこ単体の得点
     ctx.fillStyle = "#8d6e63";
     ctx.font = `bold ${canvasCssW * 0.048}px sans-serif`;
     ctx.fillText(LANG.catScore(cat.score), canvasCssW / 2, canvasCssH * 0.657);
@@ -1259,13 +1259,13 @@ function generateShareImage(cat) {
   ctx.font = `bold ${Math.round(SIZE * 0.072)}px sans-serif`;
   ctx.fillText(LANG.shareImageTitle, SIZE / 2, SIZE * 0.075);
 
-  // 猫描画
+  // ねこ描画
   const catAreaSize = SIZE * 0.58;
   const catAreaX = (SIZE - catAreaSize) / 2;
   const catAreaY = SIZE * 0.115;
   drawCatThumbnail(cat, catAreaX, catAreaY, catAreaSize, catAreaSize, 1.0);
 
-  // 猫単体の得点（小さく）
+  // ねこ単体の得点（小さく）
   ctx.fillStyle = "#a1887f";
   ctx.font = `${Math.round(SIZE * 0.038)}px sans-serif`;
   ctx.fillText(LANG.catScore(cat.score), SIZE / 2, SIZE * 0.740);
@@ -1327,7 +1327,7 @@ function canShareFiles() {
   }
 }
 
-/** 現在表示中の猫をシェア（モバイル: 共有シート / PC: ダウンロード） */
+/** 現在表示中のねこをシェア（モバイル: 共有シート / PC: ダウンロード） */
 function shareCurrentCat() {
   const cat = game.sessionCats[game.resultCatIdx];
   if (!cat) return;
@@ -1983,7 +1983,7 @@ function loadGallery() {
   }
 }
 
-/** 完成猫の形状データをlocalStorageに追記保存 */
+/** 完成ねこの形状データをlocalStorageに追記保存 */
 function saveCatRecord(popupBlocks, baseScore) {
   const rows = popupBlocks.map(b => b.row);
   const cols = popupBlocks.map(b => b.col);
