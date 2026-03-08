@@ -1100,9 +1100,9 @@ function getResultBtnRect(which) {
   const btnW = canvasCssW * 0.65;
   const btnH = Math.max(34, canvasCssH * 0.05);
   const btnX = (canvasCssW - btnW) / 2;
-  if (which === "share")   return { x: btnX, y: canvasCssH * 0.830, w: btnW, h: btnH };
-  if (which === "restart") return { x: btnX, y: canvasCssH * 0.885, w: btnW, h: btnH };
-  if (which === "gallery") return { x: btnX, y: canvasCssH * 0.940, w: btnW, h: btnH };
+  if (which === "share")   return { x: btnX, y: canvasCssH * 0.845, w: btnW, h: btnH };
+  if (which === "restart") return { x: btnX, y: canvasCssH * 0.898, w: btnW, h: btnH };
+  if (which === "gallery") return { x: btnX, y: canvasCssH * 0.951, w: btnW, h: btnH };
 }
 
 function updateResult(dt) {
@@ -1166,29 +1166,34 @@ function drawResult() {
     // 猫番号テキスト
     ctx.fillStyle = "#a1887f";
     ctx.font = `${canvasCssW * 0.038}px sans-serif`;
-    ctx.fillText(`${game.resultCatIdx + 1} / ${cats.length}`, canvasCssW / 2, canvasCssH * 0.632);
+    ctx.fillText(`${game.resultCatIdx + 1} / ${cats.length}`, canvasCssW / 2, canvasCssH * 0.627);
+
+    // 猫単体の得点
+    ctx.fillStyle = "#8d6e63";
+    ctx.font = `bold ${canvasCssW * 0.048}px sans-serif`;
+    ctx.fillText(LANG.catScore(cat.score), canvasCssW / 2, canvasCssH * 0.657);
   }
 
   // 区切り線
   ctx.strokeStyle = "#d7ccc8";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(canvasCssW * 0.1, canvasCssH * 0.645);
-  ctx.lineTo(canvasCssW * 0.9, canvasCssH * 0.645);
+  ctx.moveTo(canvasCssW * 0.1, canvasCssH * 0.675);
+  ctx.lineTo(canvasCssW * 0.9, canvasCssH * 0.675);
   ctx.stroke();
 
   // スコア
   ctx.fillStyle = "#5d4037";
   ctx.font = `bold ${canvasCssW * 0.072}px sans-serif`;
-  ctx.fillText(LANG.scorePt(game.score), canvasCssW / 2, canvasCssH * 0.698);
+  ctx.fillText(LANG.scorePt(game.score), canvasCssW / 2, canvasCssH * 0.722);
 
   ctx.font = `${canvasCssW * 0.045}px sans-serif`;
   ctx.fillStyle = "#6d4c41";
-  ctx.fillText(LANG.catCount(game.catCount), canvasCssW / 2, canvasCssH * 0.754);
+  ctx.fillText(LANG.catCount(game.catCount), canvasCssW / 2, canvasCssH * 0.773);
 
   if (cats.length > 0) {
     const longest = Math.max(...cats.map(c => c.blocks.length));
-    ctx.fillText(LANG.longestCat(longest), canvasCssW / 2, canvasCssH * 0.803);
+    ctx.fillText(LANG.longestCat(longest), canvasCssW / 2, canvasCssH * 0.816);
   }
 
   // ボタン
@@ -1260,18 +1265,23 @@ function generateShareImage(cat) {
   const catAreaY = SIZE * 0.115;
   drawCatThumbnail(cat, catAreaX, catAreaY, catAreaSize, catAreaSize, 1.0);
 
+  // 猫単体の得点（小さく）
+  ctx.fillStyle = "#a1887f";
+  ctx.font = `${Math.round(SIZE * 0.038)}px sans-serif`;
+  ctx.fillText(LANG.catScore(cat.score), SIZE / 2, SIZE * 0.740);
+
   // 区切り線
   ctx.strokeStyle = "#d7ccc8";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(SIZE * 0.1, SIZE * 0.755);
-  ctx.lineTo(SIZE * 0.9, SIZE * 0.755);
+  ctx.moveTo(SIZE * 0.1, SIZE * 0.762);
+  ctx.lineTo(SIZE * 0.9, SIZE * 0.762);
   ctx.stroke();
 
   // スコア
   ctx.fillStyle = "#5d4037";
   ctx.font = `bold ${Math.round(SIZE * 0.072)}px sans-serif`;
-  ctx.fillText(LANG.scorePt(game.score), SIZE / 2, SIZE * 0.815);
+  ctx.fillText(LANG.scorePt(game.score), SIZE / 2, SIZE * 0.820);
 
   // 完成数・最長
   ctx.fillStyle = "#8d6e63";

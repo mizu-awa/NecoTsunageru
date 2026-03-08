@@ -26,6 +26,7 @@ const LANG = {
   // Result screen
   noCatsResult: "No cats were completed this time",
   scorePt: n => `${n} pts`,
+  catScore: n => `This cat: ${n} pts`,
   longestCat: n => `Longest: ${n} parts`,
   shareBtn: "Share",
   downloadBtn: "Download Image",
